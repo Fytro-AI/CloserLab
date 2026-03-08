@@ -12,7 +12,6 @@ const corsHeaders = {
 
 serve(async (req) => {
 
-  // Handle browser preflight request
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders })
   }
@@ -36,10 +35,10 @@ serve(async (req) => {
     input: text,
   })
 
-  return new Response(audio.body, {
+  return new Response(await audio.arrayBuffer(), {
     headers: {
       ...corsHeaders,
-      "Content-Type": "audio/mpeg",
+      "Content-Type": "audio/wav",
     },
   })
 })
