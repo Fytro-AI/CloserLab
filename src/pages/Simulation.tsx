@@ -51,11 +51,12 @@ export default function Simulation() {
       currentAudioRef.current.pause()
       currentAudioRef.current = null
     }
-    voice.startListening()
 
     if (transcriptTimeout.current) clearTimeout(transcriptTimeout.current);
 
     transcriptTimeout.current = setTimeout(() => {
+      voice.stopListening() // IMPORTANT
+
       const userMsg: Message = { role: "user", content: text };
       setMessages((prev) => {
         const updated = [...prev, userMsg];
@@ -115,18 +116,14 @@ export default function Simulation() {
 
           audio.onended = () => {
             currentAudioRef.current = null
-            voice.startListening()
 
-            setTimeout(() => {
-              if (!callEndedRef.current && voiceEnabled) {
-                if (!voice.isListening) voice.startListening()
-              }
-            }, 200)
+            if (!callEndedRef.current) {
+              voice.startListening()
+            }
           }
           audio.volume = 0.95
           audio.preload = "auto"
           audio.setAttribute("playsinline", "")
-          voice.stopListening()
 
           try {
             await audio.play()
@@ -188,6 +185,7 @@ export default function Simulation() {
       let textBuffer = "";
       let assistantSoFar = "";
       let streamDone = false;
+      let lastUpdate = 0
 
       while (!streamDone) {
         const { done, value } = await reader.read();
@@ -220,7 +218,6 @@ export default function Simulation() {
               }
 
               const displayText = assistantSoFar.replace(/\[CALL_ENDED\]/g, "").trim();
-              let lastUpdate = 0
 
               if (Date.now() - lastUpdate > 80) {
                 lastUpdate = Date.now()
