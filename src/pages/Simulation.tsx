@@ -44,15 +44,14 @@ export default function Simulation() {
   const transcriptTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const handleVoiceTranscript = useCallback((text: string) => {
-    if (callEndedRef.current || isTyping) return;
+    if (callEndedRef.current) return;
 
     // 🔴 INTERRUPT AI SPEECH
     if (currentAudioRef.current) {
       currentAudioRef.current.pause()
-      currentAudioRef.current.currentTime = 0
       currentAudioRef.current = null
-      voice.isSpeaking = false
     }
+    voice.startListening()
 
     if (transcriptTimeout.current) clearTimeout(transcriptTimeout.current);
 
@@ -63,7 +62,7 @@ export default function Simulation() {
         sendFromMessages(updated);
         return updated;
       });
-    }, 1200);
+    }, 500);
   }, [isTyping]);
 
   const voice = useVoiceMode({
@@ -90,6 +89,7 @@ export default function Simulation() {
 
     if (
       lastMsg?.role === "assistant" &&
+      !isTyping &&
       messages.length - 1 > lastSpokenIndexRef.current
     ) {
       lastSpokenIndexRef.current = messages.length - 1;
@@ -112,11 +112,10 @@ export default function Simulation() {
 
           const audio = new Audio(url)
           currentAudioRef.current = audio
-          voice.isSpeaking = true
 
           audio.onended = () => {
             currentAudioRef.current = null
-            voice.isSpeaking = false
+            voice.startListening()
 
             setTimeout(() => {
               if (!callEndedRef.current && voiceEnabled) {
@@ -124,12 +123,14 @@ export default function Simulation() {
               }
             }, 200)
           }
-          audio.volume = 1.0
+          audio.volume = 0.95
           audio.preload = "auto"
           audio.setAttribute("playsinline", "")
+          voice.stopListening()
 
           try {
             await audio.play()
+            audio.muted = false
           } catch (err) {
             console.warn("Audio play blocked:", err)
           }
@@ -256,7 +257,6 @@ export default function Simulation() {
 
   const sendFromMessages = async (updated: Message[]) => {
     setIsTyping(true);
-    if (voiceEnabled) voice.stopListening();
     const aiEnded = await streamAIResponse(updated);
     setIsTyping(false);
 
@@ -372,7 +372,7 @@ export default function Simulation() {
             {/* Voice mode controls */}
             <button
               onClick={() => voice.isListening ? voice.stopListening() : voice.startListening()}
-              disabled={isTyping || voice.isSpeaking}
+              disabled={false}
               className={`flex-1 rounded-md px-3 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
                 voice.isListening
                   ? "bg-destructive text-destructive-foreground animate-pulse"
