@@ -38,12 +38,21 @@ export default function Simulation() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const callEndedRef = useRef(false);
   const lastSpokenIndexRef = useRef(-1);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null)
 
   // Voice mode hook
   const transcriptTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const handleVoiceTranscript = useCallback((text: string) => {
     if (callEndedRef.current || isTyping) return;
+
+    // 🔴 INTERRUPT AI SPEECH
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause()
+      currentAudioRef.current.currentTime = 0
+      currentAudioRef.current = null
+      voice.isSpeaking = false
+    }
 
     if (transcriptTimeout.current) clearTimeout(transcriptTimeout.current);
 
@@ -54,7 +63,7 @@ export default function Simulation() {
         sendFromMessages(updated);
         return updated;
       });
-    },1500); // wait for user to finish talking
+    }, 1200);
   }, [isTyping]);
 
   const voice = useVoiceMode({
@@ -101,25 +110,29 @@ export default function Simulation() {
           const blob = await res.blob();
           const url = URL.createObjectURL(blob);
 
-          const audio = new Audio(url);
+          const audio = new Audio(url)
+          currentAudioRef.current = audio
+          voice.isSpeaking = true
 
           audio.onended = () => {
-            // Mark AI as done speaking
-            voice.isSpeaking = false;
+            currentAudioRef.current = null
+            voice.isSpeaking = false
 
-            // Small delay ensures mobile browsers let us access the mic
             setTimeout(() => {
               if (!callEndedRef.current && voiceEnabled) {
-                // Only start listening if not already active
-                if (!voice.isListening) voice.startListening();
+                if (!voice.isListening) voice.startListening()
               }
-            }, 150); // 150ms works reliably on iOS & Android
-          };
+            }, 200)
+          }
           audio.volume = 1.0
           audio.preload = "auto"
           audio.setAttribute("playsinline", "")
 
-          await audio.play();
+          try {
+            await audio.play()
+          } catch (err) {
+            console.warn("Audio play blocked:", err)
+          }
         } catch (err) {
           console.error("TTS error:", err);
         }
@@ -263,6 +276,11 @@ export default function Simulation() {
   };
 
   const endCall = () => {
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause()
+      currentAudioRef.current = null
+    }
+
     voice.stopSpeaking();
     voice.stopListening();
     navigate("/breakdown", {
@@ -353,12 +371,21 @@ export default function Simulation() {
           <>
             {/* Voice mode controls */}
             <button
-              onClick={() => {
-                if (!voice.isListening && !voice.isSpeaking) voice.startListening();
-              }}
-              disabled={voice.isSpeaking} // allow manual override if not speaking
+              onClick={() => voice.isListening ? voice.stopListening() : voice.startListening()}
+              disabled={isTyping || voice.isSpeaking}
+              className={`flex-1 rounded-md px-3 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
+                voice.isListening
+                  ? "bg-destructive text-destructive-foreground animate-pulse"
+                  : "gradient-primary text-primary-foreground hover:opacity-90"
+              } disabled:opacity-50`}
             >
-              {voice.isListening ? "Listening…" : voice.isSpeaking ? "Prospect speaking…" : "Tap to speak"}
+              {voice.isListening ? (
+                <><MicOff className="h-4 w-4" /> Listening… tap to stop</>
+              ) : voice.isSpeaking ? (
+                <><Volume2 className="h-4 w-4 animate-pulse" /> Prospect speaking…</>
+              ) : (
+                <><Mic className="h-4 w-4" /> Tap to speak</>
+              )}
             </button>
           </>
         ) : (
