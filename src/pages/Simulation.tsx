@@ -199,15 +199,23 @@ export default function Simulation() {
               }
 
               const displayText = assistantSoFar.replace(/\[CALL_ENDED\]/g, "").trim();
-              setMessages((prev) => {
-                const last = prev[prev.length - 1];
-                if (last?.role === "assistant" && !conversationHistory.includes(last)) {
-                  return prev.map((m, i) =>
-                    i === prev.length - 1 ? { ...m, content: displayText } : m
-                  );
-                }
-                return [...prev, { role: "assistant", content: displayText }];
-              });
+              let lastUpdate = 0
+
+              if (Date.now() - lastUpdate > 80) {
+                lastUpdate = Date.now()
+
+                setMessages((prev) => {
+                  const last = prev[prev.length - 1]
+
+                  if (last?.role === "assistant") {
+                    return prev.map((m, i) =>
+                      i === prev.length - 1 ? { ...m, content: displayText } : m
+                    )
+                  }
+
+                  return [...prev, { role: "assistant", content: displayText }]
+                })
+              }
             }
           } catch {
             textBuffer = line + "\n" + textBuffer;

@@ -38,7 +38,7 @@ serve(async (req) => {
   return new Response(await audio.arrayBuffer(), {
     headers: {
       ...corsHeaders,
-      "Content-Type": "audio/mpeg",
+      "Content-Type": "audio/wav",
     },
   })
 })
