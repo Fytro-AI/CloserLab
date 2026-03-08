@@ -281,7 +281,7 @@ REALISM RULES (CRITICAL — these make you feel like a REAL buyer, not a chatbot
         ...messages,
       ],
       temperature: 0.3,
-      max_tokens: 120,
+      max_tokens: 500,
       stream: true,
     });
 
