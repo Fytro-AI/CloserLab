@@ -20,9 +20,9 @@ serve(async (req) => {
   );
 
   try {
-    const stripeKey = Deno.env.get("STRIPE_TEST_SECRET_KEY");
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) {
-      console.error("STRIPE_TEST_SECRET_KEY not configured");
+      console.error("STRIPE_SECRET_KEY not configured");
       return new Response(JSON.stringify({ error: "Service configuration error" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
