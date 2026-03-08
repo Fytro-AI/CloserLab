@@ -1,0 +1,16 @@
+project_id = "nywzfdrragzueajzndzi"
+
+[functions.simulation-chat]
+verify_jwt = false
+
+[functions.score-call]
+verify_jwt = false
+
+[functions.create-checkout]
+verify_jwt = false
+
+[functions.check-subscription]
+verify_jwt = false
+
+[functions.tts]
+verify_jwt = false
