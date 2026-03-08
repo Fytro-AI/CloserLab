@@ -38,32 +38,17 @@ export default function Simulation() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const callEndedRef = useRef(false);
   const lastSpokenIndexRef = useRef(-1);
-  const currentAudioRef = useRef<HTMLAudioElement | null>(null)
 
   // Voice mode hook
-  const transcriptTimeout = useRef<NodeJS.Timeout | null>(null);
-
   const handleVoiceTranscript = useCallback((text: string) => {
-    if (callEndedRef.current) return;
-
-    // 🔴 INTERRUPT AI SPEECH
-    if (currentAudioRef.current) {
-      currentAudioRef.current.pause()
-      currentAudioRef.current = null
-    }
-
-    if (transcriptTimeout.current) clearTimeout(transcriptTimeout.current);
-
-    transcriptTimeout.current = setTimeout(() => {
-      voice.stopListening() // IMPORTANT
-
-      const userMsg: Message = { role: "user", content: text };
-      setMessages((prev) => {
-        const updated = [...prev, userMsg];
-        sendFromMessages(updated);
-        return updated;
-      });
-    }, 500);
+    if (callEndedRef.current || isTyping) return;
+    // Directly send the transcribed text
+    const userMsg: Message = { role: "user", content: text };
+    setMessages((prev) => {
+      const updated = [...prev, userMsg];
+      sendFromMessages(updated);
+      return updated;
+    });
   }, [isTyping]);
 
   const voice = useVoiceMode({
@@ -90,7 +75,6 @@ export default function Simulation() {
 
     if (
       lastMsg?.role === "assistant" &&
-      !isTyping &&
       messages.length - 1 > lastSpokenIndexRef.current
     ) {
       lastSpokenIndexRef.current = messages.length - 1;
@@ -111,26 +95,15 @@ export default function Simulation() {
           const blob = await res.blob();
           const url = URL.createObjectURL(blob);
 
-          const audio = new Audio(url)
-          currentAudioRef.current = audio
+          const audio = new Audio(url);
 
           audio.onended = () => {
-            currentAudioRef.current = null
-
-            if (!callEndedRef.current) {
-              voice.startListening()
+            if (voiceEnabled && !callEndedRef.current) {
+              voice.startListening();
             }
-          }
-          audio.volume = 0.95
-          audio.preload = "auto"
-          audio.setAttribute("playsinline", "")
+          };
 
-          try {
-            await audio.play()
-            audio.muted = false
-          } catch (err) {
-            console.warn("Audio play blocked:", err)
-          }
+          await audio.play();
         } catch (err) {
           console.error("TTS error:", err);
         }
@@ -185,7 +158,6 @@ export default function Simulation() {
       let textBuffer = "";
       let assistantSoFar = "";
       let streamDone = false;
-      let lastUpdate = 0
 
       while (!streamDone) {
         const { done, value } = await reader.read();
@@ -218,22 +190,15 @@ export default function Simulation() {
               }
 
               const displayText = assistantSoFar.replace(/\[CALL_ENDED\]/g, "").trim();
-
-              if (Date.now() - lastUpdate > 80) {
-                lastUpdate = Date.now()
-
-                setMessages((prev) => {
-                  const last = prev[prev.length - 1]
-
-                  if (last?.role === "assistant") {
-                    return prev.map((m, i) =>
-                      i === prev.length - 1 ? { ...m, content: displayText } : m
-                    )
-                  }
-
-                  return [...prev, { role: "assistant", content: displayText }]
-                })
-              }
+              setMessages((prev) => {
+                const last = prev[prev.length - 1];
+                if (last?.role === "assistant" && !conversationHistory.includes(last)) {
+                  return prev.map((m, i) =>
+                    i === prev.length - 1 ? { ...m, content: displayText } : m
+                  );
+                }
+                return [...prev, { role: "assistant", content: displayText }];
+              });
             }
           } catch {
             textBuffer = line + "\n" + textBuffer;
@@ -254,6 +219,7 @@ export default function Simulation() {
 
   const sendFromMessages = async (updated: Message[]) => {
     setIsTyping(true);
+    if (voiceEnabled) voice.stopListening();
     const aiEnded = await streamAIResponse(updated);
     setIsTyping(false);
 
@@ -273,11 +239,6 @@ export default function Simulation() {
   };
 
   const endCall = () => {
-    if (currentAudioRef.current) {
-      currentAudioRef.current.pause()
-      currentAudioRef.current = null
-    }
-
     voice.stopSpeaking();
     voice.stopListening();
     navigate("/breakdown", {
@@ -369,7 +330,7 @@ export default function Simulation() {
             {/* Voice mode controls */}
             <button
               onClick={() => voice.isListening ? voice.stopListening() : voice.startListening()}
-              disabled={false}
+              disabled={isTyping || voice.isSpeaking}
               className={`flex-1 rounded-md px-3 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
                 voice.isListening
                   ? "bg-destructive text-destructive-foreground animate-pulse"

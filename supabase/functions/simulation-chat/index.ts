@@ -1,3 +1,5 @@
+
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import OpenAI from "npm:openai";
@@ -281,7 +283,7 @@ REALISM RULES (CRITICAL — these make you feel like a REAL buyer, not a chatbot
         ...messages,
       ],
       temperature: 0.3,
-      max_tokens: 500,
+      max_tokens: 1500,
       stream: true,
     });
 
