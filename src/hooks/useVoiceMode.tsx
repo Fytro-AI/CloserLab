@@ -43,9 +43,10 @@ export function useVoiceMode({ enabled, onTranscript }: UseVoiceModeOptions) {
     };
 
     recognition.onend = () => {
-      setIsListening(false);
-      setInterimText("");
-    };
+      if (enabled && !isSpeaking) {
+        recognition.start()
+      }
+    }
 
     recognition.onerror = () => {
       setIsListening(false);

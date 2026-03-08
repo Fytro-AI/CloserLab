@@ -108,6 +108,9 @@ export default function Simulation() {
               voice.startListening();
             }
           };
+          audio.volume = 1.0
+          audio.preload = "auto"
+          audio.setAttribute("playsinline", "")
 
           await audio.play();
         } catch (err) {
