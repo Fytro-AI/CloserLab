@@ -234,10 +234,11 @@ export default function Scenarios() {
             <div className="text-xs text-muted-foreground">Type your pitch</div>
           </button>
           <button
-            onClick={() => setVoiceMode(true)}
+            onClick={() => profile?.is_pro && setVoiceMode(true)}
+            disabled={!profile?.is_pro}
             className={`rounded-lg border p-4 text-left transition-all relative ${
               !profile?.is_pro
-                ? "border-border bg-card opacity-50"
+                ? "border-border bg-card opacity-50 cursor-not-allowed"
                 : voiceMode
                 ? "border-primary bg-primary/10 card-glow"
                 : "border-border bg-card hover:border-primary/30 card-glow-hover"

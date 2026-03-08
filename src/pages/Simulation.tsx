@@ -104,9 +104,16 @@ export default function Simulation() {
           const audio = new Audio(url);
 
           audio.onended = () => {
-            if (!callEndedRef.current) {
-              voice.startListening();
-            }
+            // Mark AI as done speaking
+            voice.isSpeaking = false;
+
+            // Small delay ensures mobile browsers let us access the mic
+            setTimeout(() => {
+              if (!callEndedRef.current && voiceEnabled) {
+                // Only start listening if not already active
+                if (!voice.isListening) voice.startListening();
+              }
+            }, 150); // 150ms works reliably on iOS & Android
           };
           audio.volume = 1.0
           audio.preload = "auto"
@@ -346,21 +353,12 @@ export default function Simulation() {
           <>
             {/* Voice mode controls */}
             <button
-              onClick={() => voice.isListening ? voice.stopListening() : voice.startListening()}
-              disabled={isTyping || voice.isSpeaking}
-              className={`flex-1 rounded-md px-3 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
-                voice.isListening
-                  ? "bg-destructive text-destructive-foreground animate-pulse"
-                  : "gradient-primary text-primary-foreground hover:opacity-90"
-              } disabled:opacity-50`}
+              onClick={() => {
+                if (!voice.isListening && !voice.isSpeaking) voice.startListening();
+              }}
+              disabled={voice.isSpeaking} // allow manual override if not speaking
             >
-              {voice.isListening ? (
-                <><MicOff className="h-4 w-4" /> Listening… tap to stop</>
-              ) : voice.isSpeaking ? (
-                <><Volume2 className="h-4 w-4 animate-pulse" /> Prospect speaking…</>
-              ) : (
-                <><Mic className="h-4 w-4" /> Tap to speak</>
-              )}
+              {voice.isListening ? "Listening…" : voice.isSpeaking ? "Prospect speaking…" : "Tap to speak"}
             </button>
           </>
         ) : (
