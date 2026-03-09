@@ -10,7 +10,7 @@ const FIRST_NAMES = ["Jordan", "Alex", "Morgan", "Taylor", "Riley", "Casey", "Qu
 const LAST_NAMES = ["Reeves", "Chen", "Nakamura", "Okafor", "Lindström", "Patel", "Torres", "Andersson", "Kim", "Dubois"];
 
 // Special testers who get voice calls unlocked
-const VOICE_TESTERS = ["Butterfingers", "Jake"];
+const VOICE_TESTERS = ["Butterfingers", "Jake", "Conor"];
 
 const COMPANY_TEMPLATES: Record<string, string[]> = {
   saas: ["{last} Systems", "{last} Cloud", "NovaTech Solutions", "{first}Ware"],
