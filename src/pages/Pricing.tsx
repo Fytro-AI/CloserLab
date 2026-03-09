@@ -3,8 +3,8 @@ import { Check, Zap, Crown, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/useProfile";
 
-const MONTHLY_PRICE_ID = "price_1T813ePNpQaZotKHM50KaI6O";
-const YEARLY_PRICE_ID = "price_1T812UPNpQaZotKHNKkIOFAW";
+const MONTHLY_PRICE_ID = "price_1T6Qk0PNpQaZotKH3r78FZtK";
+const YEARLY_PRICE_ID = "price_1T6QjzPNpQaZotKHRxHZF8yh";
 
 const PLANS = [
   {
