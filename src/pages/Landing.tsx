@@ -94,13 +94,13 @@ function HowItWorks() {
       icon: Crosshair,
       number: "01",
       title: "Choose Your Battle",
-      description: "Select industry, buyer persona, difficulty, and deal type. Every rep is different — your training should be too.",
+      description: "Select industry, buyer persona, difficulty, and deal type. Every rep is different, your training should be too.",
     },
     {
       icon: Swords,
       number: "02",
       title: "Enter The Simulation",
-      description: "AI buyer pushes back. Interrupts. Objects. Tests you. No scripts. No safety net. Just pressure.",
+      description: "AI buyer pushes back, interrupts, objects, tests you. No scripts, no safety net, just pressure.",
     },
     {
       icon: Brain,
