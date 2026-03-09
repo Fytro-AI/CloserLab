@@ -73,7 +73,9 @@ export function useProfile() {
 
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!user) return;
-    await supabase.from("profiles").update(updates).eq("user_id", user.id);
+    // Strip sensitive fields that should only be modified server-side
+    const { is_pro, xp, level, streak, calls_completed, weekly_calls_count, ...safeUpdates } = updates;
+    await supabase.from("profiles").update(safeUpdates).eq("user_id", user.id);
     await fetchProfile();
   };
 

@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Lock, Zap, AlertCircle, ArrowRight, X, Mic, Crown, Swords } from "lucide-react";
+import { Lock, Zap, AlertCircle, ArrowRight, X, Mic, Crown, Swords, Monitor } from "lucide-react";
 import { INDUSTRIES, DIFFICULTIES, PERSONAS } from "@/lib/game-data";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useProfile } from "@/hooks/useProfile";
 
 /* ─── Prospect name / company generator ─── */
@@ -56,6 +57,7 @@ function generateProspect(persona: string, industry: string) {
 
 export default function Scenarios() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { profile, canStartSimulation, remainingSimulations } = useProfile();
   const [industry, setIndustry] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState<string | null>(null);
@@ -220,7 +222,7 @@ export default function Scenarios() {
         </div>
       </div>
 
-      {/* Voice Mode — Pro only */}
+      {/* Voice Mode — Pro only, Desktop only */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Call Mode</h2>
         <div className="grid grid-cols-2 gap-3">
@@ -234,26 +236,31 @@ export default function Scenarios() {
             <div className="text-xs text-muted-foreground">Type your pitch</div>
           </button>
           <button
-            onClick={() => profile?.is_pro && setVoiceMode(true)}
-            disabled={!profile?.is_pro}
+            onClick={() => profile?.is_pro && !isMobile && setVoiceMode(true)}
+            disabled={!profile?.is_pro || isMobile}
             className={`rounded-lg border p-4 text-left transition-all relative ${
-              !profile?.is_pro
+              !profile?.is_pro || isMobile
                 ? "border-border bg-card opacity-50 cursor-not-allowed"
                 : voiceMode
                 ? "border-primary bg-primary/10 card-glow"
                 : "border-border bg-card hover:border-primary/30 card-glow-hover"
             }`}
           >
-            {!profile?.is_pro && (
-              <div className="absolute top-2 right-2">
-                <Crown className="h-4 w-4 text-accent" />
+            {(!profile?.is_pro || isMobile) && (
+              <div className="absolute top-2 right-2 flex items-center gap-1">
+                {!profile?.is_pro && <Crown className="h-4 w-4 text-accent" />}
+                {isMobile && <Monitor className="h-4 w-4 text-muted-foreground" />}
               </div>
             )}
             <div className="font-semibold text-foreground text-sm flex items-center gap-1.5">
               <Mic className="h-4 w-4" /> Voice Call
             </div>
             <div className="text-xs text-muted-foreground">
-              {profile?.is_pro ? "Speak your pitch aloud" : "Pro feature — upgrade to unlock"}
+              {isMobile
+                ? "Desktop only — not available on mobile"
+                : profile?.is_pro
+                ? "Speak your pitch aloud"
+                : "Pro feature — upgrade to unlock"}
             </div>
           </button>
         </div>

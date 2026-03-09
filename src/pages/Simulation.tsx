@@ -4,6 +4,7 @@ import { PhoneOff, Send, Clock, Mic, MicOff, Volume2 } from "lucide-react";
 import { PERSONAS } from "@/lib/game-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useVoiceMode } from "@/hooks/useVoiceMode";
+import CallScreen from "@/components/simulation/CallScreen";
 
 interface Message {
   role: "user" | "assistant";
@@ -67,51 +68,33 @@ export default function Simulation() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  // Voice: auto-speak AI responses and auto-listen after
+  // Voice: auto-speak AI responses. On desktop, auto-listen after.
   useEffect(() => {
     if (!voiceEnabled || isTyping) return;
-
     const lastMsg = messages[messages.length - 1];
-
-    if (
-      lastMsg?.role === "assistant" &&
-      messages.length - 1 > lastSpokenIndexRef.current
-    ) {
+    if (lastMsg?.role === "assistant" && messages.length - 1 > lastSpokenIndexRef.current) {
       lastSpokenIndexRef.current = messages.length - 1;
-
-      async function speak(text: string) {
-        try {
-          const res = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tts`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ text }),
-            }
-          );
-
-          const blob = await res.blob();
-          const url = URL.createObjectURL(blob);
-
-          const audio = new Audio(url);
-
-          audio.onended = () => {
-            if (voiceEnabled && !callEndedRef.current) {
-              voice.startListening();
-            }
-          };
-
-          await audio.play();
-        } catch (err) {
-          console.error("TTS error:", err);
+      voice.speak(lastMsg.content).then(() => {
+        // On desktop, auto-resume listening. iOS uses hold-to-talk.
+        if (!callEndedRef.current && !voice.isIOS) {
+          void voice.startListening();
         }
-      }
-
-      speak(lastMsg.content);
+      });
     }
   }, [messages, isTyping, voiceEnabled]);
+
+  // Safety net for desktop only: if idle, resume listening
+  useEffect(() => {
+    if (!voiceEnabled || isTyping || callEndedRef.current) return;
+    if (voice.isIOS) return;
+    if (voice.isListening || voice.isSpeaking) return;
+
+    const timer = window.setTimeout(() => {
+      void voice.startListening();
+    }, 900);
+
+    return () => window.clearTimeout(timer);
+  }, [isTyping, voice.isListening, voice.isSpeaking, voice.startListening, voice.isIOS, voiceEnabled]);
 
   const formatTime = (s: number) =>
     `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
@@ -256,6 +239,37 @@ export default function Simulation() {
     });
   };
 
+  const lastAIMessage = [...messages].reverse().find(m => m.role === "assistant")?.content || "";
+
+  // Voice mode: render full-screen phone call UI
+  if (voiceEnabled) {
+    return (
+      <CallScreen
+        prospectName={prospectName || personaData.label}
+        prospectCompany={prospectCompany || "Prospect"}
+        personaIcon={personaData.icon}
+        elapsed={elapsed}
+        isListening={voice.isListening}
+        isSpeaking={voice.isSpeaking}
+        isTyping={isTyping}
+        interimText={voice.interimText}
+        lastAIMessage={lastAIMessage}
+        isIOS={voice.isIOS}
+        onMicDown={() => voice.startHoldToTalk()}
+        onMicUp={() => voice.stopHoldToTalk()}
+        onToggleMic={() => {
+          if (voice.isListening) {
+            voice.stopListening();
+          } else {
+            void voice.startListening(true);
+          }
+        }}
+        onEndCall={endCall}
+      />
+    );
+  }
+
+  // Text mode: chat interface
   return (
     <div className="container mx-auto flex h-[calc(100vh-3.5rem)] max-w-2xl flex-col px-4 py-4">
       {/* Challenge banner */}
@@ -275,7 +289,6 @@ export default function Simulation() {
             <div className="text-sm font-bold text-foreground">{prospectName || personaData.label}</div>
             <div className="text-xs text-muted-foreground">
               {prospectCompany || "Prospect"} • Active Call
-              {voiceEnabled && <span className="ml-1 text-primary">🎙️</span>}
             </div>
           </div>
         </div>
@@ -304,15 +317,6 @@ export default function Simulation() {
           </div>
         ))}
 
-        {/* Voice: interim transcript */}
-        {voiceEnabled && voice.interimText && (
-          <div className="flex justify-end">
-            <div className="max-w-[80%] rounded-lg px-4 py-2.5 text-sm gradient-primary text-primary-foreground opacity-50">
-              {voice.interimText}…
-            </div>
-          </div>
-        )}
-
         {isTyping && messages[messages.length - 1]?.role !== "assistant" && (
           <div className="flex justify-start">
             <div className="bg-secondary text-muted-foreground rounded-lg px-4 py-2.5 text-sm">
@@ -325,46 +329,21 @@ export default function Simulation() {
 
       {/* Input */}
       <div className="flex gap-2 rounded-b-lg border border-border bg-card p-3">
-        {voiceEnabled ? (
-          <>
-            {/* Voice mode controls */}
-            <button
-              onClick={() => voice.isListening ? voice.stopListening() : voice.startListening()}
-              disabled={isTyping || voice.isSpeaking}
-              className={`flex-1 rounded-md px-3 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
-                voice.isListening
-                  ? "bg-destructive text-destructive-foreground animate-pulse"
-                  : "gradient-primary text-primary-foreground hover:opacity-90"
-              } disabled:opacity-50`}
-            >
-              {voice.isListening ? (
-                <><MicOff className="h-4 w-4" /> Listening… tap to stop</>
-              ) : voice.isSpeaking ? (
-                <><Volume2 className="h-4 w-4 animate-pulse" /> Prospect speaking…</>
-              ) : (
-                <><Mic className="h-4 w-4" /> Tap to speak</>
-              )}
-            </button>
-          </>
-        ) : (
-          <>
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-              placeholder="Type your pitch..."
-              disabled={isTyping}
-              className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-            />
-            <button
-              onClick={sendMessage}
-              disabled={isTyping}
-              className="rounded-md gradient-primary px-3 py-2 text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
-              <Send className="h-4 w-4" />
-            </button>
-          </>
-        )}
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          placeholder="Type your pitch..."
+          disabled={isTyping}
+          className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+        />
+        <button
+          onClick={sendMessage}
+          disabled={isTyping}
+          className="rounded-md gradient-primary px-3 py-2 text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
+        >
+          <Send className="h-4 w-4" />
+        </button>
         <button
           onClick={endCall}
           className="rounded-md bg-destructive px-3 py-2 text-destructive-foreground hover:opacity-90 transition-opacity"

@@ -1,12 +1,5 @@
-
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
-import OpenAI from "npm:openai";
-
-const client = new OpenAI({
-  apiKey: Deno.env.get("OPENAI_API_KEY"),
-});
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,6 +13,14 @@ const VALID_INDUSTRIES = [
   "saas", "plumbing", "coaching", "ecommerce", "agency",
   "macro-intelligence", "real-estate", "recruiting", "consulting",
 ];
+
+const MAX_MESSAGES_FOR_MODEL = 28;
+const MAX_MESSAGE_CHARS_FOR_MODEL = 1200;
+
+type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
 
 const PERSONA_PROMPTS: Record<string, string> = {
   skeptical: `You are a NICE BUT SKEPTICAL buyer.
@@ -155,6 +156,49 @@ Typical objections:
 You're practical, price-sensitive, and have been burned before. You want someone trustworthy.`,
 };
 
+function clampText(value: unknown, maxChars: number): string {
+  if (typeof value !== "string") return "";
+  return value.replace(/\s+/g, " ").trim().slice(0, maxChars);
+}
+
+function compactMessages(messages: ChatMessage[]): ChatMessage[] {
+  const normalized = messages
+    .map((m) => ({
+      role: m.role,
+      content: clampText(m.content, MAX_MESSAGE_CHARS_FOR_MODEL),
+    }))
+    .filter((m) => m.content.length > 0);
+
+  if (normalized.length <= MAX_MESSAGES_FOR_MODEL) return normalized;
+
+  const firstTurns = normalized.slice(0, 6);
+  const recentTurns = normalized.slice(-(MAX_MESSAGES_FOR_MODEL - firstTurns.length));
+  return [...firstTurns, ...recentTurns];
+}
+
+function buildSellerMemory(messages: ChatMessage[]): string {
+  const sellerLines = messages
+    .filter((m) => m.role === "user")
+    .map((m) => clampText(m.content, 220));
+
+  const identity = sellerLines
+    .filter((line) => /\b(i am|i'm|this is|my name is|i work at|we are)\b/i.test(line))
+    .slice(0, 3);
+
+  const offer = sellerLines
+    .filter((line) => /\b(we sell|we help|our product|our platform|our service|we provide|i.?m calling about)\b/i.test(line))
+    .slice(0, 4);
+
+  const valueProp = sellerLines
+    .filter((line) => /\b(benefit|roi|save|increase|reduce|improve|faster|cheaper|grow)\b/i.test(line))
+    .slice(0, 3);
+
+  const memoryItems = [...new Set([...identity, ...offer, ...valueProp])];
+  if (memoryItems.length === 0) return "";
+
+  return `KNOWN SELLER CONTEXT (do not forget these details unless corrected):\n- ${memoryItems.join("\n- ")}`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -184,7 +228,17 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { messages, industry, difficulty, persona, prospectName, prospectCompany, prospectBackstory, challengeSystemPrompt, customIndustryDescription } = body;
+    const {
+      messages,
+      industry,
+      difficulty,
+      persona,
+      prospectName,
+      prospectCompany,
+      prospectBackstory,
+      challengeSystemPrompt,
+      customIndustryDescription,
+    } = body;
 
     if (!Array.isArray(messages) || messages.length === 0 || messages.length > 100) {
       return new Response(JSON.stringify({ error: "Invalid messages" }), {
@@ -193,7 +247,12 @@ serve(async (req) => {
     }
 
     for (const m of messages) {
-      if (!m.role || !["user", "assistant"].includes(m.role) || typeof m.content !== "string" || m.content.length > 5000) {
+      if (
+        !m.role ||
+        !["user", "assistant"].includes(m.role) ||
+        typeof m.content !== "string" ||
+        m.content.length > 5000
+      ) {
         return new Response(JSON.stringify({ error: "Invalid message format" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -203,13 +262,11 @@ serve(async (req) => {
     const safeIndustry = VALID_INDUSTRIES.includes(industry) ? industry : "saas";
     const safeDifficulty = VALID_DIFFICULTIES.includes(difficulty) ? difficulty : "medium";
     const safePersona = VALID_PERSONAS.includes(persona) ? persona : "skeptical";
-    const safeName = typeof prospectName === "string" ? prospectName.slice(0, 100) : "";
-    const safeCompany = typeof prospectCompany === "string" ? prospectCompany.slice(0, 200) : "";
-    const safeChallengePrompt = typeof challengeSystemPrompt === "string" ? challengeSystemPrompt.slice(0, 2000) : "";
-    const safeBackstory = typeof prospectBackstory === "string" ? prospectBackstory.slice(0, 500) : "";
-    const safeCustomIndustry = typeof customIndustryDescription === "string" ? customIndustryDescription.slice(0, 1000) : "";
-
-    console.log("OpenAI key exists:", !!Deno.env.get("OPENAI_API_KEY"));
+    const safeName = clampText(prospectName, 100);
+    const safeCompany = clampText(prospectCompany, 200);
+    const safeChallengePrompt = clampText(challengeSystemPrompt, 2000);
+    const safeBackstory = clampText(prospectBackstory, 500);
+    const safeCustomIndustry = clampText(customIndustryDescription, 1000);
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) {
@@ -227,15 +284,15 @@ serve(async (req) => {
       ? `\nYour name is ${safeName}. You work at ${safeCompany}. Background: ${safeBackstory}`
       : "";
 
-    // Custom industry description overrides the standard industry prompt
     const industryContext = safeCustomIndustry
       ? `CUSTOM INDUSTRY CONTEXT (provided by the seller's description of their typical buyer):
 ${safeCustomIndustry}
 Adapt your behavior, objections, and vocabulary to match this industry and buyer profile.`
       : industryPrompt;
 
-    // Challenge-specific prompt overrides generic persona
     const buyerBehavior = safeChallengePrompt || personaPrompt;
+    const compactedMessages = compactMessages(messages as ChatMessage[]);
+    const sellerMemory = buildSellerMemory(messages as ChatMessage[]);
 
     const systemPrompt = `You are a realistic buyer in a sales roleplay simulation for the ${safeIndustry} industry.
 ${prospectContext}
@@ -273,50 +330,55 @@ REALISM RULES (CRITICAL — these make you feel like a REAL buyer, not a chatbot
 12. Never mention that this is a simulation or training exercise.
 13. If the seller is rude, offensive, uses profanity, or is completely unprofessional, end the call: "I don't have time for this. We're done here." then on a NEW LINE add exactly: [CALL_ENDED]
 14. If you decide to hang up for any reason, add [CALL_ENDED] on the last line.
-15. The seller is calling YOU. Wait for them to introduce themselves and pitch. When you receive the first message, respond as if you just picked up the phone (e.g. "Hello?", "Yeah, who's this?", etc).
-16. Vary your response length. Sometimes give just ONE word ("No.", "Why?", "And?"). Sometimes give 2-3 sentences. Never be predictable.`;
+15. The seller is calling YOU. Wait for them to introduce themselves and pitch. When you receive the first message, respond naturally as if you just picked up a phone call. NEVER use "Yeah, who's this?" — that line is banned. Instead, pick from a WIDE range of natural openers that match your personality. Examples: "Hello?", "This is ${safeName || 'me'}, what's up?", "[Company name] speaking.", "Yep?", "Who am I speaking with?", "Go ahead.", "Hey, what can I do for you?", "Make it quick, I'm in between meetings.", "Talk to me." — but ALWAYS vary it. Never repeat the same opener twice across calls.
+16. Vary your response length dramatically. Sometimes one word ("No.", "Why?", "And?", "Hmm."). Sometimes 2-3 sentences. Occasionally a single skeptical grunt or pause like "..." or "Mm-hmm." Never be predictable in length or tone.
+17. Once the seller shares their identity, company, and what they sell, REMEMBER it for the ENTIRE call. Reference it naturally: "So you said you're from [company]...", "Going back to that [product] thing...". Do NOT repeatedly ask who they are.
+18. Never invent seller details. If context is missing, ask a short clarifying question.
+19. Use the seller's NAME when they share it. Real buyers do this: "Okay [name], but here's my issue..."
+20. Reference SPECIFIC things the seller said earlier in the conversation. Quote them back: "You mentioned [X] earlier — does that mean...?" This makes you feel like a real person who's actually listening.
+21. Your tone and vocabulary should evolve throughout the call based on how well the seller is performing. If they're good, you warm up slightly. If they're bad, you get colder and more dismissive.`;
 
-    const stream = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...messages,
-      ],
-      temperature: 0.3,
-      max_tokens: 1500,
-      stream: true,
-    });
-
-    // For non-streaming:
-    const message = stream.choices?.[0]?.message?.content ?? "";
-
-    const encoder = new TextEncoder();
-
-    const readable = new ReadableStream({
-      async start(controller) {
-        for await (const chunk of stream) {
-          const content = chunk.choices?.[0]?.delta?.content;
-          if (content) {
-            const payload = `data: ${JSON.stringify({
-              choices: [{ delta: { content } }],
-            })}\n\n`;
-
-            controller.enqueue(encoder.encode(payload));
-          }
-        }
-
-        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-        controller.close();
-      },
-    });
-
-    return new Response(readable, {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
       headers: {
-        ...corsHeaders,
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...(sellerMemory ? [{ role: "system", content: sellerMemory }] : []),
+          ...compactedMessages,
+        ],
+        stream: true,
+        max_tokens: 320,
+        temperature: 1.05,
+        presence_penalty: 0.6,
+        frequency_penalty: 0.4,
+      }),
+    });
+
+    if (!response.ok) {
+      const status = response.status;
+      console.error("AI gateway error:", status, await response.text());
+      if (status === 429) {
+        return new Response(JSON.stringify({ error: "Too many requests. Please try again shortly." }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (status === 402) {
+        return new Response(JSON.stringify({ error: "Service temporarily unavailable." }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ error: "An error occurred. Please try again." }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(response.body, {
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {
     console.error("simulation-chat error:", e);

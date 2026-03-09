@@ -4,6 +4,11 @@ export const RANKS = [
   { name: "Closer", minXP: 1500, icon: "🟣" },
   { name: "Shark", minXP: 3500, icon: "🔴" },
   { name: "Wolf", minXP: 7000, icon: "🐺" },
+  { name: "Apex", minXP: 12000, icon: "🦅" },
+  { name: "Titan", minXP: 20000, icon: "⚡" },
+  { name: "Phantom", minXP: 35000, icon: "👻" },
+  { name: "Legend", minXP: 55000, icon: "🔱" },
+  { name: "Godfather", minXP: 100000, icon: "👑" },
 ] as const;
 
 export const INDUSTRIES = [

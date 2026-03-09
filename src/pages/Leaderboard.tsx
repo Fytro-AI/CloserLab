@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { RANKS, getRank } from "@/lib/game-data";
-import { Trophy, Flame } from "lucide-react";
+import { RANKS, getRank, getNextRank } from "@/lib/game-data";
+import { Trophy, Flame, HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
 
 interface LeaderboardEntry {
   rank: number;
@@ -15,6 +16,7 @@ interface LeaderboardEntry {
 
 export default function Leaderboard() {
   const { user } = useAuth();
+  const { profile } = useProfile();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -64,14 +66,32 @@ export default function Leaderboard() {
       {/* Rank Ladder */}
       <div className="rounded-lg border border-border bg-card p-5 space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Rank Ladder</h2>
-        <div className="flex items-center justify-between gap-2">
-          {RANKS.map((r) => (
-            <div key={r.name} className="flex flex-col items-center gap-1 text-center">
-              <span className="text-xl">{r.icon}</span>
-              <span className="text-xs font-bold text-foreground">{r.name}</span>
-              <span className="text-[10px] text-muted-foreground">{r.minXP}+ XP</span>
-            </div>
-          ))}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          {RANKS.map((r) => {
+            const userXP = profile?.xp ?? 0;
+            const currentRank = getRank(userXP);
+            const nextRank = getNextRank(userXP);
+            const isUnlocked = userXP >= r.minXP;
+            const isNext = nextRank?.name === r.name;
+
+            if (!isUnlocked && !isNext) {
+              return (
+                <div key={r.name} className="flex flex-col items-center gap-1 text-center opacity-40">
+                  <span className="text-xl">❓</span>
+                  <span className="text-xs font-bold text-muted-foreground">???</span>
+                  <span className="text-[10px] text-muted-foreground">???</span>
+                </div>
+              );
+            }
+
+            return (
+              <div key={r.name} className={`flex flex-col items-center gap-1 text-center ${isNext ? "opacity-60" : ""}`}>
+                <span className="text-xl">{isNext ? "❓" : r.icon}</span>
+                <span className="text-xs font-bold text-foreground">{isNext ? "???" : r.name}</span>
+                <span className="text-[10px] text-muted-foreground">{r.minXP}+ XP</span>
+              </div>
+            );
+          })}
         </div>
       </div>
 

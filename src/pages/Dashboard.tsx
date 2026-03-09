@@ -36,7 +36,7 @@ export default function Dashboard() {
           <p className="text-muted-foreground">
             You're a <span className="font-semibold text-foreground">{rank.icon} {rank.name}</span>.
             {nextRank
-              ? ` ${nextRank.minXP - profile.xp} XP until ${nextRank.name}.`
+              ? ` ${nextRank.minXP - profile.xp} XP until your next rank.`
               : " You've reached the top. Stay sharp."}
           </p>
         </div>
@@ -51,7 +51,7 @@ export default function Dashboard() {
           <span className="font-semibold text-foreground">{rank.icon} {rank.name}</span>
           {nextRank && (
             <span className="text-muted-foreground">
-              {nextRank.icon} {nextRank.name}
+              ❓ ???
             </span>
           )}
         </div>
