@@ -97,17 +97,13 @@ export default function Simulation() {
 
   const extractCoachTip = (text: string): { display: string; tip: string | null } => {
     const fullMatch = text.match(/\[COACH_TIP:\s*([\s\S]*?)\]/);
-    if (fullMatch) {
-      const tip = fullMatch[1].trim();
-      const display = text.replace(/\[COACH_TIP:[\s\S]*?\]/g, "").trim();
-      return { display, tip };
-    }
-    const partialMatch = text.match(/\[COACH_TIP:\s*([\s\S]*)$/);
-    if (partialMatch) {
-      const display = text.replace(/\[COACH_TIP:[\s\S]*$/, "").trim();
-      return { display, tip: null };
-    }
-    return { display: text, tip: null };
+    const tip = fullMatch ? fullMatch[1].trim() : null;
+    // Strip the tag and any leading newlines/spaces before it
+    const display = text
+      .replace(/\n*\[COACH_TIP:[\s\S]*?\]/g, "")
+      .replace(/\n*\[COACH_TIP:[\s\S]*$/, "") // partial tag
+      .trim();
+    return { display, tip };
   };
 
   const streamAIResponse = async (conversationHistory: Message[]): Promise<boolean> => {
@@ -189,7 +185,6 @@ export default function Simulation() {
             textBuffer = line + "\n" + textBuffer;
             break;
           }
-          console.log("RAW assistantSoFar:", JSON.stringify(assistantSoFar));
         }
       }
 

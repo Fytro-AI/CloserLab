@@ -206,7 +206,6 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-  console.log("FUNCTION VERSION: coach-tip-enabled");
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -337,41 +336,16 @@ REALISM RULES (CRITICAL — these make you feel like a REAL buyer, not a chatbot
 12. Never mention that this is a simulation or training exercise.
 13. If the seller is rude, offensive, uses profanity, or is completely unprofessional, end the call: "I don't have time for this. We're done here." then on a NEW LINE add exactly: [CALL_ENDED]
 14. If you decide to hang up for any reason, add [CALL_ENDED] on the last line.
-15. The seller is calling YOU. Wait for them to introduce themselves and pitch. When you receive the first message, respond naturally as if you just picked up a phone call. NEVER use "Yeah, who's this?" — that line is banned. Instead, pick from a WIDE range of natural openers that match your personality. Examples: "Hello?", "This is ${safeName || 'me'}, what's up?", "[Company name] speaking.", "Yep?", "Who am I speaking with?", "Go ahead.", "Hey, what can I do for you?", "Make it quick, I'm in between meetings.", "Talk to me." — but ALWAYS vary it. Never repeat the same opener twice across calls.
+15. The seller is calling YOU. Wait for them to introduce themselves and pitch. When you receive the first message, respond naturally as if you just picked up a phone call. NEVER use "Yeah, who's this?" — that line is banned. Instead, pick from a WIDE range of natural openers that match your personality. Examples: "Hello?", "This is ${safeName || "me"}, what's up?", "[Company name] speaking.", "Yep?", "Who am I speaking with?", "Go ahead.", "Hey, what can I do for you?", "Make it quick, I'm in between meetings.", "Talk to me." — but ALWAYS vary it. Never repeat the same opener twice across calls.
 16. Vary your response length dramatically. Sometimes one word ("No.", "Why?", "And?", "Hmm."). Sometimes 2-3 sentences. Occasionally a single skeptical grunt or pause like "..." or "Mm-hmm." Never be predictable in length or tone.
 17. Once the seller shares their identity, company, and what they sell, REMEMBER it for the ENTIRE call. Reference it naturally: "So you said you're from [company]...", "Going back to that [product] thing...". Do NOT repeatedly ask who they are.
 18. Never invent seller details. If context is missing, ask a short clarifying question.
 19. Use the seller's NAME when they share it. Real buyers do this: "Okay [name], but here's my issue..."
 20. Reference SPECIFIC things the seller said earlier in the conversation. Quote them back: "You mentioned [X] earlier — does that mean...?" This makes you feel like a real person who's actually listening.
-21. Your tone and vocabulary should evolve throughout the call based on how well the seller is performing. If they're good, you warm up slightly. If they're bad, you get colder and more dismissive.
+21. Your tone and vocabulary should evolve throughout the call based on how well the seller is performing. If they're good, you warm up slightly. If they're bad, you get colder and more dismissive.`;
 
-COACH TIP INJECTION:
-You are a buyer AND a silent coach. After EVERY message you send, you must append a coach tip.
-
-FORMAT (copy exactly):
-<buyer response here>
-[COACH_TIP: <tip here>]
-
-EXAMPLES:
-
-Example 1:
-Buyer says: "That sounds too good to be true."
-You output: "That sounds too good to be true.
-[COACH_TIP: Back up the claim with a specific number or case study.]"
-
-Example 2:
-Buyer says: "Hello?"
-You output: "Hello?
-[COACH_TIP: Open with your name, company, and one-sentence value prop immediately.]"
-
-Example 3:
-Buyer says: "No."
-You output: "No.
-[COACH_TIP: Ask what would need to be true for them to say yes.]"
-
-NEVER skip the [COACH_TIP:] line. It must appear after 100% of your responses, even one-word ones.`;
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    // ── Step 1: Get buyer response (non-streaming so we can append tip) ──────
+    const buyerResp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${OPENAI_API_KEY}`,
@@ -384,7 +358,7 @@ NEVER skip the [COACH_TIP:] line. It must appear after 100% of your responses, e
           ...(sellerMemory ? [{ role: "system", content: sellerMemory }] : []),
           ...compactedMessages,
         ],
-        stream: true,
+        stream: false,
         max_tokens: 480,
         temperature: 1.05,
         presence_penalty: 0,
@@ -392,27 +366,74 @@ NEVER skip the [COACH_TIP:] line. It must appear after 100% of your responses, e
       }),
     });
 
-    if (!response.ok) {
-      const status = response.status;
-      console.error("AI gateway error:", status, await response.text());
-      if (status === 429) {
-        return new Response(JSON.stringify({ error: "Too many requests. Please try again shortly." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (status === 402) {
-        return new Response(JSON.stringify({ error: "Service temporarily unavailable." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      return new Response(JSON.stringify({ error: "An error occurred. Please try again." }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!buyerResp.ok) {
+      const status = buyerResp.status;
+      console.error("Buyer AI error:", status, await buyerResp.text());
+      if (status === 429) return new Response(JSON.stringify({ error: "Too many requests. Please try again shortly." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (status === 402) return new Response(JSON.stringify({ error: "Service temporarily unavailable." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "An error occurred. Please try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    return new Response(response.body, {
+    const buyerData = await buyerResp.json();
+    const buyerText = buyerData.choices?.[0]?.message?.content?.trim() ?? "";
+
+    // ── Step 2: Generate coach tip in a separate focused call ────────────────
+    let tip = "";
+    try {
+      const tipResp = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          max_tokens: 60,
+          temperature: 0.7,
+          messages: [
+            {
+              role: "system",
+              content: `You are a sales coach watching a live sales call. Given the buyer's latest response, write ONE specific coaching tip for the seller on what to say or do next.
+Rules:
+- Start with an action verb (Try, Ask, Acknowledge, Lead with, Pivot, Mirror, etc.)
+- Be specific to what the buyer just said — not generic advice
+- Max 15 words
+- Output ONLY the tip text. No labels, no brackets, no explanation.`,
+            },
+            {
+              role: "user",
+              content: `The buyer just said: "${buyerText.replace(/\[CALL_ENDED\]/g, "").trim()}"`,
+            },
+          ],
+        }),
+      });
+      const tipData = await tipResp.json();
+      tip = tipData.choices?.[0]?.message?.content?.trim() ?? "";
+    } catch (e) {
+      console.error("Tip generation failed:", e);
+    }
+
+    // ── Step 3: Combine and return as SSE stream ─────────────────────────────
+    const fullText = tip
+      ? `${buyerText}\n[COACH_TIP: ${tip}]`
+      : buyerText;
+
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        const payload = JSON.stringify({
+          choices: [{ delta: { content: fullText }, finish_reason: "stop" }],
+        });
+        controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
+        controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+        controller.close();
+      },
+    });
+
+    return new Response(stream, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
+
   } catch (e) {
     console.error("simulation-chat error:", e);
     return new Response(
