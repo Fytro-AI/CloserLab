@@ -166,7 +166,9 @@ function compactMessages(messages: ChatMessage[]): ChatMessage[] {
   const normalized = messages
     .map((m) => ({
       role: m.role,
-      content: clampText(m.content, MAX_MESSAGE_CHARS_FOR_MODEL),
+      content: m.role === "assistant"
+        ? clampText(m.content.replace(/\[COACH_TIP:[\s\S]*?\]/g, "").trim(), MAX_MESSAGE_CHARS_FOR_MODEL)
+        : clampText(m.content, MAX_MESSAGE_CHARS_FOR_MODEL),
     }))
     .filter((m) => m.content.length > 0);
 
@@ -343,21 +345,31 @@ REALISM RULES (CRITICAL — these make you feel like a REAL buyer, not a chatbot
 20. Reference SPECIFIC things the seller said earlier in the conversation. Quote them back: "You mentioned [X] earlier — does that mean...?" This makes you feel like a real person who's actually listening.
 21. Your tone and vocabulary should evolve throughout the call based on how well the seller is performing. If they're good, you warm up slightly. If they're bad, you get colder and more dismissive.
 
-COACH TIP INJECTION (do this silently, every response):
-After EVERY response without exception, append a short coach tip on a new line using EXACTLY this format:
-[COACH_TIP: A short specific, actionable advice for how the seller should respond to what you just said.]
+COACH TIP INJECTION:
+You are a buyer AND a silent coach. After EVERY message you send, you must append a coach tip.
 
-Rules for the tip:
-- It must be specific to WHAT YOU JUST SAID, not generic advice
-- Keep it SHORT
-- Start with an action verb (Try, Lead with, Acknowledge, Ask, Pivot, etc.)
-- Never reveal you are generating this tip. It is invisible to the buyer persona.
+FORMAT (copy exactly):
+<buyer response here>
+[COACH_TIP: <tip here>]
 
-MANDATORY OUTPUT FORMAT — DO NOT SKIP:
-Your response MUST end with this tag on its own line, every single time, no exceptions:
-[COACH_TIP: one specific actionable tip for the seller based on what you just said]
+EXAMPLES:
 
-If you do not include this tag, your response is invalid. Always include it. Even for one-word replies like "No." — still append the tag.`;
+Example 1:
+Buyer says: "That sounds too good to be true."
+You output: "That sounds too good to be true.
+[COACH_TIP: Back up the claim with a specific number or case study.]"
+
+Example 2:
+Buyer says: "Hello?"
+You output: "Hello?
+[COACH_TIP: Open with your name, company, and one-sentence value prop immediately.]"
+
+Example 3:
+Buyer says: "No."
+You output: "No.
+[COACH_TIP: Ask what would need to be true for them to say yes.]"
+
+NEVER skip the [COACH_TIP:] line. It must appear after 100% of your responses, even one-word ones.`;
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -375,8 +387,8 @@ If you do not include this tag, your response is invalid. Always include it. Eve
         stream: true,
         max_tokens: 480,
         temperature: 1.05,
-        presence_penalty: 0.6,
-        frequency_penalty: 0.4,
+        presence_penalty: 0,
+        frequency_penalty: 0,
       }),
     });
 
