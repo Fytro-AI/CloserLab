@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.customer-portal]
 verify_jwt = false
+
+[functions.daily-objection]
+verify_jwt = false
