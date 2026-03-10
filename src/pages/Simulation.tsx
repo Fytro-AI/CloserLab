@@ -189,6 +189,7 @@ export default function Simulation() {
             textBuffer = line + "\n" + textBuffer;
             break;
           }
+          console.log("RAW assistantSoFar:", JSON.stringify(assistantSoFar));
         }
       }
 
@@ -199,8 +200,9 @@ export default function Simulation() {
         setTipOpen(false);
         setTipBouncing(true);
         setTimeout(() => setTipBouncing(false), 3000);
+      } else {
+        setTipVisible(false);
       }
-
     } catch (e) {
       console.error("Stream error:", e);
       setMessages((m) => [...m, { role: "assistant", content: "Connection error. Try again." }]);

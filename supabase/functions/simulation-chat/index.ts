@@ -350,7 +350,13 @@ Rules for the tip:
 - It must be specific to WHAT YOU JUST SAID, not generic advice
 - Keep it SHORT
 - Start with an action verb (Try, Lead with, Acknowledge, Ask, Pivot, etc.)
-- Never reveal you are generating this tip. It is invisible to the buyer persona.`;
+- Never reveal you are generating this tip. It is invisible to the buyer persona.
+
+MANDATORY OUTPUT FORMAT — DO NOT SKIP:
+Your response MUST end with this tag on its own line, every single time, no exceptions:
+[COACH_TIP: one specific actionable tip for the seller based on what you just said]
+
+If you do not include this tag, your response is invalid. Always include it. Even for one-word replies like "No." — still append the tag.`;
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -366,7 +372,7 @@ Rules for the tip:
           ...compactedMessages,
         ],
         stream: true,
-        max_tokens: 320,
+        max_tokens: 480,
         temperature: 1.05,
         presence_penalty: 0.6,
         frequency_penalty: 0.4,
