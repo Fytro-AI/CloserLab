@@ -97,10 +97,23 @@ export default function Simulation() {
 
   // Parse coach tip out of AI text
   const extractCoachTip = (text: string): { display: string; tip: string | null } => {
-    const tipMatch = text.match(/\[COACH_TIP:\s*(.*?)\]/s);
-    const tip = tipMatch ? tipMatch[1].trim() : null;
-    const display = text.replace(/\[COACH_TIP:.*?\]/gs, "").trim();
-    return { display, tip };
+    // Match [COACH_TIP: ...] across newlines, with or without closing bracket
+    const fullMatch = text.match(/\[COACH_TIP:\s*([\s\S]*?)\]/);
+    if (fullMatch) {
+      const tip = fullMatch[1].trim();
+      const display = text.replace(/\[COACH_TIP:[\s\S]*?\]/g, "").trim();
+      return { display, tip };
+    }
+    
+    // Partial match — tag opened but stream may not have closed yet
+    const partialMatch = text.match(/\[COACH_TIP:\s*([\s\S]*)$/);
+    if (partialMatch) {
+      // Strip the partial tag from display but don't surface tip yet
+      const display = text.replace(/\[COACH_TIP:[\s\S]*$/, "").trim();
+      return { display, tip: null };
+    }
+
+    return { display: text, tip: null };
   };
 
   const streamAIResponse = async (conversationHistory: Message[]): Promise<boolean> => {
