@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { PhoneOff, Send, Clock, Mic, MicOff, Volume2 } from "lucide-react";
+import { PhoneOff, Send, Clock, X } from "lucide-react";
 import { PERSONAS } from "@/lib/game-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useVoiceMode } from "@/hooks/useVoiceMode";
@@ -36,14 +36,19 @@ export default function Simulation() {
   const [elapsed, setElapsed] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
   const [voiceEnabled] = useState(initialVoiceMode);
+
+  // Coach tip state
+  const [coachTip, setCoachTip] = useState<string | null>(null);
+  const [tipVisible, setTipVisible] = useState(false);
+  const [tipOpen, setTipOpen] = useState(false);
+  const [tipBouncing, setTipBouncing] = useState(false);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const callEndedRef = useRef(false);
   const lastSpokenIndexRef = useRef(-1);
 
-  // Voice mode hook
   const handleVoiceTranscript = useCallback((text: string) => {
     if (callEndedRef.current || isTyping) return;
-    // Directly send the transcribed text
     const userMsg: Message = { role: "user", content: text };
     setMessages((prev) => {
       const updated = [...prev, userMsg];
@@ -57,25 +62,21 @@ export default function Simulation() {
     onTranscript: handleVoiceTranscript,
   });
 
-  // Timer
   useEffect(() => {
     const t = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(t);
   }, []);
 
-  // Auto-scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  // Voice: auto-speak AI responses. On desktop, auto-listen after.
   useEffect(() => {
     if (!voiceEnabled || isTyping) return;
     const lastMsg = messages[messages.length - 1];
     if (lastMsg?.role === "assistant" && messages.length - 1 > lastSpokenIndexRef.current) {
       lastSpokenIndexRef.current = messages.length - 1;
       voice.speak(lastMsg.content).then(() => {
-        // On desktop, auto-resume listening. iOS uses hold-to-talk.
         if (!callEndedRef.current && !voice.isIOS) {
           void voice.startListening();
         }
@@ -83,21 +84,24 @@ export default function Simulation() {
     }
   }, [messages, isTyping, voiceEnabled]);
 
-  // Safety net for desktop only: if idle, resume listening
   useEffect(() => {
     if (!voiceEnabled || isTyping || callEndedRef.current) return;
     if (voice.isIOS) return;
     if (voice.isListening || voice.isSpeaking) return;
-
-    const timer = window.setTimeout(() => {
-      void voice.startListening();
-    }, 900);
-
+    const timer = window.setTimeout(() => { void voice.startListening(); }, 900);
     return () => window.clearTimeout(timer);
   }, [isTyping, voice.isListening, voice.isSpeaking, voice.startListening, voice.isIOS, voiceEnabled]);
 
   const formatTime = (s: number) =>
     `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
+
+  // Parse coach tip out of AI text
+  const extractCoachTip = (text: string): { display: string; tip: string | null } => {
+    const tipMatch = text.match(/\[COACH_TIP:\s*(.*?)\]/s);
+    const tip = tipMatch ? tipMatch[1].trim() : null;
+    const display = text.replace(/\[COACH_TIP:.*?\]/gs, "").trim();
+    return { display, tip };
+  };
 
   const streamAIResponse = async (conversationHistory: Message[]): Promise<boolean> => {
     const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/simulation-chat`;
@@ -128,11 +132,7 @@ export default function Simulation() {
 
       if (!resp.ok || !resp.body) {
         const errData = await resp.json().catch(() => ({}));
-        console.error("AI error:", errData);
-        setMessages((m) => [
-          ...m,
-          { role: "assistant", content: errData.error || "Connection lost. Try again." },
-        ]);
+        setMessages((m) => [...m, { role: "assistant", content: errData.error || "Connection lost. Try again." }]);
         return false;
       }
 
@@ -151,34 +151,32 @@ export default function Simulation() {
         while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
           let line = textBuffer.slice(0, newlineIndex);
           textBuffer = textBuffer.slice(newlineIndex + 1);
-
           if (line.endsWith("\r")) line = line.slice(0, -1);
           if (line.startsWith(":") || line.trim() === "") continue;
           if (!line.startsWith("data: ")) continue;
-
           const jsonStr = line.slice(6).trim();
-          if (jsonStr === "[DONE]") {
-            streamDone = true;
-            break;
-          }
+          if (jsonStr === "[DONE]") { streamDone = true; break; }
 
           try {
             const parsed = JSON.parse(jsonStr);
             const content = parsed.choices?.[0]?.delta?.content as string | undefined;
             if (content) {
               assistantSoFar += content;
+              if (assistantSoFar.includes("[CALL_ENDED]")) aiEndedCall = true;
 
-              if (assistantSoFar.includes("[CALL_ENDED]")) {
-                aiEndedCall = true;
+              const { display: displayText, tip } = extractCoachTip(
+                assistantSoFar.replace(/\[CALL_ENDED\]/g, "").trim()
+              );
+
+              // Surface tip when stream is complete enough to have it
+              if (tip) {
+                setCoachTip(tip);
               }
 
-              const displayText = assistantSoFar.replace(/\[CALL_ENDED\]/g, "").trim();
               setMessages((prev) => {
                 const last = prev[prev.length - 1];
                 if (last?.role === "assistant" && !conversationHistory.includes(last)) {
-                  return prev.map((m, i) =>
-                    i === prev.length - 1 ? { ...m, content: displayText } : m
-                  );
+                  return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: displayText } : m);
                 }
                 return [...prev, { role: "assistant", content: displayText }];
               });
@@ -189,12 +187,20 @@ export default function Simulation() {
           }
         }
       }
+
+      // After stream ends, trigger tip bounce if we got one
+      const { tip: finalTip } = extractCoachTip(assistantSoFar.replace(/\[CALL_ENDED\]/g, "").trim());
+      if (finalTip) {
+        setCoachTip(finalTip);
+        setTipVisible(true);
+        setTipOpen(false);
+        setTipBouncing(true);
+        setTimeout(() => setTipBouncing(false), 3000); // stop bouncing after 3s
+      }
+
     } catch (e) {
       console.error("Stream error:", e);
-      setMessages((m) => [
-        ...m,
-        { role: "assistant", content: "Connection error. Try again." },
-      ]);
+      setMessages((m) => [...m, { role: "assistant", content: "Connection error. Try again." }]);
     }
 
     return aiEndedCall;
@@ -202,10 +208,10 @@ export default function Simulation() {
 
   const sendFromMessages = async (updated: Message[]) => {
     setIsTyping(true);
+    setTipVisible(false); // hide previous tip when user sends a new message
     if (voiceEnabled) voice.stopListening();
     const aiEnded = await streamAIResponse(updated);
     setIsTyping(false);
-
     if (aiEnded) {
       callEndedRef.current = true;
       setTimeout(() => endCall(), 2000);
@@ -225,23 +231,12 @@ export default function Simulation() {
     voice.stopSpeaking();
     voice.stopListening();
     navigate("/breakdown", {
-      state: {
-        persona,
-        industry,
-        difficulty,
-        duration: elapsed,
-        transcript: messages,
-        challengeId,
-        challengeName,
-        challengeGoal,
-        challengePassScore,
-      },
+      state: { persona, industry, difficulty, duration: elapsed, transcript: messages, challengeId, challengeName, challengeGoal, challengePassScore },
     });
   };
 
   const lastAIMessage = [...messages].reverse().find(m => m.role === "assistant")?.content || "";
 
-  // Voice mode: render full-screen phone call UI
   if (voiceEnabled) {
     return (
       <CallScreen
@@ -257,19 +252,12 @@ export default function Simulation() {
         isIOS={voice.isIOS}
         onMicDown={() => voice.startHoldToTalk()}
         onMicUp={() => voice.stopHoldToTalk()}
-        onToggleMic={() => {
-          if (voice.isListening) {
-            voice.stopListening();
-          } else {
-            void voice.startListening(true);
-          }
-        }}
+        onToggleMic={() => { if (voice.isListening) { voice.stopListening(); } else { void voice.startListening(true); } }}
         onEndCall={endCall}
       />
     );
   }
 
-  // Text mode: chat interface
   return (
     <div className="container mx-auto flex h-[calc(100vh-3.5rem)] max-w-2xl flex-col px-4 py-4">
       {/* Challenge banner */}
@@ -281,15 +269,14 @@ export default function Simulation() {
           <div className="text-xs text-muted-foreground">Goal: {challengeGoal}</div>
         </div>
       )}
+
       {/* Header */}
       <div className={`flex items-center justify-between border border-border bg-card p-3 ${challengeId ? "" : "rounded-t-lg"}`}>
         <div className="flex items-center gap-2">
           <span className="text-xl">{personaData.icon}</span>
           <div>
             <div className="text-sm font-bold text-foreground">{prospectName || personaData.label}</div>
-            <div className="text-xs text-muted-foreground">
-              {prospectCompany || "Prospect"} • Active Call
-            </div>
+            <div className="text-xs text-muted-foreground">{prospectCompany || "Prospect"} • Active Call</div>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -301,31 +288,148 @@ export default function Simulation() {
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto border-x border-border bg-background p-4 space-y-3">
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div
-              className={`max-w-[80%] rounded-lg px-4 py-2.5 text-sm ${
-                msg.role === "user"
-                  ? "gradient-primary text-primary-foreground"
-                  : "bg-secondary text-secondary-foreground"
-              }`}
-            >
-              {msg.content}
+      {/* Messages + Coach Tip button (relative wrapper) */}
+      <div className="relative flex-1 overflow-hidden">
+        <div className="h-full overflow-y-auto border-x border-border bg-background p-4 space-y-3">
+          {messages.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[80%] rounded-lg px-4 py-2.5 text-sm ${msg.role === "user" ? "gradient-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
+                {msg.content}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+          {isTyping && messages[messages.length - 1]?.role !== "assistant" && (
+            <div className="flex justify-start">
+              <div className="bg-secondary text-muted-foreground rounded-lg px-4 py-2.5 text-sm">
+                <span className="animate-pulse">typing...</span>
+              </div>
+            </div>
+          )}
+          <div ref={bottomRef} />
+        </div>
 
-        {isTyping && messages[messages.length - 1]?.role !== "assistant" && (
-          <div className="flex justify-start">
-            <div className="bg-secondary text-muted-foreground rounded-lg px-4 py-2.5 text-sm">
-              <span className="animate-pulse">typing...</span>
+        {/* Coach Tip Notification Badge */}
+        {tipVisible && !tipOpen && (
+          <button
+            onClick={() => { setTipOpen(true); setTipBouncing(false); }}
+            style={{
+              position: "absolute",
+              bottom: "12px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              background: "linear-gradient(135deg, #f59e0b, #d97706)",
+              color: "white",
+              border: "none",
+              borderRadius: "999px",
+              padding: "8px 16px",
+              fontSize: "13px",
+              fontWeight: 600,
+              cursor: "pointer",
+              boxShadow: "0 4px 20px rgba(245,158,11,0.45)",
+              animation: tipBouncing ? "coachBounce 0.6s ease infinite alternate" : "none",
+              zIndex: 10,
+              whiteSpace: "nowrap",
+            }}
+          >
+            <span style={{ fontSize: "16px" }}>💡</span>
+            Coach's Tip
+          </button>
+        )}
+      </div>
+
+      {/* Coach Tip Modal */}
+      {tipOpen && coachTip && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            zIndex: 50,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "16px",
+          }}
+          onClick={() => setTipOpen(false)}
+        >
+          <div
+            style={{
+              background: "linear-gradient(135deg, #1c1917, #292524)",
+              border: "1px solid rgba(245,158,11,0.4)",
+              borderRadius: "16px",
+              padding: "24px",
+              maxWidth: "400px",
+              width: "100%",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(245,158,11,0.15)",
+              position: "relative",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setTipOpen(false)}
+              style={{
+                position: "absolute",
+                top: "12px",
+                right: "12px",
+                background: "rgba(255,255,255,0.08)",
+                border: "none",
+                borderRadius: "6px",
+                padding: "4px",
+                cursor: "pointer",
+                color: "#a8a29e",
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              <X size={16} />
+            </button>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
+              <span style={{ fontSize: "24px" }}>🎙️</span>
+              <div>
+                <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#f59e0b", marginBottom: "2px" }}>
+                  Coach's Tip
+                </div>
+                <div style={{ fontSize: "11px", color: "#78716c" }}>for that last objection</div>
+              </div>
+            </div>
+
+            <p style={{ color: "#e7e5e4", fontSize: "15px", lineHeight: 1.6, margin: 0 }}>
+              {coachTip}
+            </p>
+
+            <div style={{ marginTop: "18px", paddingTop: "14px", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+              <button
+                onClick={() => setTipOpen(false)}
+                style={{
+                  width: "100%",
+                  background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  padding: "10px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                }}
+              >
+                Got it 👊
+              </button>
             </div>
           </div>
-        )}
-        <div ref={bottomRef} />
-      </div>
+        </div>
+      )}
+
+      {/* Bounce keyframe injection */}
+      <style>{`
+        @keyframes coachBounce {
+          0%   { transform: translateX(-50%) translateY(0px); box-shadow: 0 4px 20px rgba(245,158,11,0.45); }
+          100% { transform: translateX(-50%) translateY(-8px); box-shadow: 0 12px 30px rgba(245,158,11,0.65); }
+        }
+      `}</style>
 
       {/* Input */}
       <div className="flex gap-2 rounded-b-lg border border-border bg-card p-3">
