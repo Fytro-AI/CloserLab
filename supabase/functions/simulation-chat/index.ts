@@ -204,6 +204,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  console.log("FUNCTION VERSION: coach-tip-enabled");
 
   try {
     const authHeader = req.headers.get("Authorization");
