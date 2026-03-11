@@ -60,8 +60,10 @@ export default function Simulation() {
     });
   }, [isTyping]);
 
+  const isRealtimePro = voiceEnabled && profile?.subscription_tier === "pro";
+
   const voice = useVoiceMode({
-    enabled: voiceEnabled,
+    enabled: voiceEnabled && !isRealtimePro,
     onTranscript: handleVoiceTranscript,
   });
 
