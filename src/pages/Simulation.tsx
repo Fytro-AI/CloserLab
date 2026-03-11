@@ -78,7 +78,7 @@ export default function Simulation() {
   }, [messages, isTyping]);
 
   useEffect(() => {
-    if (!voiceEnabled || isTyping) return;
+    if (!voiceEnabled || isRealtimePro || isTyping) return;  // ← add isRealtimePro
     const lastMsg = messages[messages.length - 1];
     if (lastMsg?.role === "assistant" && messages.length - 1 > lastSpokenIndexRef.current) {
       lastSpokenIndexRef.current = messages.length - 1;
@@ -88,15 +88,15 @@ export default function Simulation() {
         }
       });
     }
-  }, [messages, isTyping, voiceEnabled]);
+  }, [messages, isTyping, voiceEnabled, isRealtimePro]);
 
   useEffect(() => {
-    if (!voiceEnabled || isTyping || callEndedRef.current) return;
+    if (!voiceEnabled || isRealtimePro || isTyping || callEndedRef.current) return;  // ← add isRealtimePro
     if (voice.isIOS) return;
     if (voice.isListening || voice.isSpeaking) return;
     const timer = window.setTimeout(() => { void voice.startListening(); }, 900);
     return () => window.clearTimeout(timer);
-  }, [isTyping, voice.isListening, voice.isSpeaking, voice.startListening, voice.isIOS, voiceEnabled]);
+  }, [isTyping, voice.isListening, voice.isSpeaking, voice.startListening, voice.isIOS, voiceEnabled, isRealtimePro]);
 
   const formatTime = (s: number) =>
     `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
