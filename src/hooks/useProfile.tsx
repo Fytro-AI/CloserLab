@@ -18,6 +18,7 @@ export interface Profile {
   weekly_calls_count: number;
   week_start: string | null;
   last_call_date: string | null;
+  subscription_tier: "starter" | "pro" | null;
 }
 
 export function useProfile() {

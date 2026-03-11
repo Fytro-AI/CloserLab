@@ -252,56 +252,76 @@ function TeamsSection() {
   );
 }
 
-/* ─── PRICING ─── */
 function PricingSection() {
   const plans = [
     {
       name: "Free",
-      price: "€0",
+      price: "$0",
       period: "forever",
-      features: ["3 simulations per week", "Basic feedback", "Limited analytics"],
+      features: [
+        "3 practice calls total",
+        "Text simulations",
+        "Basic feedback",
+      ],
       cta: "Start Free",
       highlighted: false,
+      badge: null,
+    },
+    {
+      name: "Starter",
+      price: "$14.99",
+      period: "/month",
+      features: [
+        "Unlimited text simulations",
+        "All buyer personas",
+        "Full scoring & analytics",
+        "Skill progression & XP",
+        "Custom scenarios",
+      ],
+      cta: "Get Starter",
+      highlighted: false,
+      badge: null,
     },
     {
       name: "Pro",
-      price: "€9.99",
+      price: "$29.99",
       period: "/month",
       features: [
-        "Unlimited simulations",
-        "Full scoring breakdown",
-        "Skill progression tracking",
-        "Advanced buyer personas",
-        "Training micro-lessons",
+        "Everything in Starter",
+        "🎙️ Realtime AI voice calls",
+        "10 voice sessions/day",
+        "Live objection coaching",
+        "Weekly coaching reports",
       ],
       cta: "Go Pro",
       highlighted: true,
+      badge: "Most Popular",
     },
   ];
 
   return (
     <section id="pricing" className="py-24 px-4">
-      <div className="max-w-4xl mx-auto space-y-12">
+      <div className="max-w-5xl mx-auto space-y-12">
         <div className="text-center space-y-4">
           <h2 className="text-4xl sm:text-5xl font-black tracking-tight text-foreground">
             Simple <span className="text-primary text-glow">Pricing</span>
           </h2>
-          <p className="text-muted-foreground text-lg">No hidden fees. Cancel anytime.</p>
+          <p className="text-muted-foreground text-lg">No contracts. Cancel anytime.</p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 max-w-3xl mx-auto">
+        <div className="grid gap-6 md:grid-cols-3">
           {plans.map((plan) => (
             <div
               key={plan.name}
-              className={`relative rounded-xl border p-8 space-y-6 transition-all ${
+              className={`relative rounded-xl border p-8 space-y-6 transition-all flex flex-col ${
                 plan.highlighted
                   ? "border-primary bg-primary/5 card-glow scale-[1.02]"
                   : "border-border bg-card card-glow-hover"
               }`}
             >
-              {plan.highlighted && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full gradient-primary px-3 py-1 text-xs font-bold text-primary-foreground uppercase tracking-wider">
-                  <Crown className="h-3 w-3" /> Most Popular
+              {plan.badge && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full gradient-primary px-3 py-1 text-xs font-bold text-primary-foreground uppercase tracking-wider whitespace-nowrap">
+                  <Crown className="h-3 w-3" /> {plan.badge}
                 </div>
               )}
 
@@ -309,14 +329,14 @@ function PricingSection() {
                 <h3 className="text-xl font-black text-foreground">{plan.name}</h3>
                 <div className="mt-2 flex items-baseline gap-1">
                   <span className="text-4xl font-black text-foreground">{plan.price}</span>
-                  {plan.period && <span className="text-muted-foreground text-sm">{plan.period}</span>}
+                  <span className="text-muted-foreground text-sm">{plan.period}</span>
                 </div>
               </div>
 
-              <ul className="space-y-2.5">
+              <ul className="space-y-2.5 flex-1">
                 {plan.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-foreground">
-                    <Check className={`h-4 w-4 flex-shrink-0 ${plan.highlighted ? "text-primary" : "text-muted-foreground"}`} />
+                  <li key={f} className="flex items-start gap-2 text-sm text-foreground">
+                    <Check className={`h-4 w-4 flex-shrink-0 mt-0.5 ${plan.highlighted ? "text-primary" : "text-muted-foreground"}`} />
                     {f}
                   </li>
                 ))}

@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.daily-objection]
 verify_jwt = false
+
+[functions.realtime-token]
+verify_jwt = false

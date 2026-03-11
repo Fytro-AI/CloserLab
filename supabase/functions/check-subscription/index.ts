@@ -2,6 +2,17 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
+const STARTER_PRICE_IDS = [
+  "price_1T9rpNPNpQaZotKHqrLD9fnS",
+  "price_1T9rrSPNpQaZotKHNxsyxpAD",
+];
+const PRO_PRICE_IDS = [
+  "price_1T813ePNpQaZotKHM50KaI6O",
+  "price_1T9s39PNpQaZotKHp1Ji6V5m",
+];
+
+// Inside where you currently do: await supabaseAdmin.from("profiles").update({ is_pro: hasActiveSub })
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -20,7 +31,7 @@ serve(async (req) => {
   );
 
   try {
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    const stripeKey = Deno.env.get("STRIPE_TEST_SECRET_KEY");
     if (!stripeKey) {
       console.error("STRIPE_SECRET_KEY not configured");
       return new Response(JSON.stringify({ error: "Service configuration error" }), {
@@ -81,7 +92,17 @@ serve(async (req) => {
       } catch (_) {}
     }
 
-    await supabaseAdmin.from("profiles").update({ is_pro: hasActiveSub }).eq("user_id", user.id);
+    const activePriceId = subscriptions.data[0]?.items?.data[0]?.price?.id;
+    const tier = PRO_PRICE_IDS.includes(activePriceId)
+      ? "pro"
+      : STARTER_PRICE_IDS.includes(activePriceId)
+      ? "starter"
+      : null;
+
+    await supabaseAdmin.from("profiles").update({
+      is_pro: hasActiveSub,
+      subscription_tier: hasActiveSub ? tier : null,
+    }).eq("user_id", user.id);
 
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,

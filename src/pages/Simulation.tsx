@@ -5,6 +5,8 @@ import { PERSONAS } from "@/lib/game-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useVoiceMode } from "@/hooks/useVoiceMode";
 import CallScreen from "@/components/simulation/CallScreen";
+import RealtimeCall from "@/components/simulation/RealtimeCall";
+import { useProfile } from "@/hooks/useProfile";
 
 interface Message {
   role: "user" | "assistant";
@@ -36,6 +38,7 @@ export default function Simulation() {
   const [elapsed, setElapsed] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
   const [voiceEnabled] = useState(initialVoiceMode);
+  const { profile } = useProfile();
 
   // Coach tip state
   const [coachTip, setCoachTip] = useState<string | null>(null);
@@ -239,6 +242,38 @@ export default function Simulation() {
   const lastAIMessage = [...messages].reverse().find(m => m.role === "assistant")?.content || "";
 
   if (voiceEnabled) {
+    if (profile?.subscription_tier === "pro") {
+      return (
+        <RealtimeCall
+          persona={persona}
+          industry={industry}
+          difficulty={difficulty}
+          prospectName={prospectName}
+          prospectCompany={prospectCompany}
+          prospectBackstory={prospectBackstory}
+          challengeSystemPrompt={challengeSystemPrompt}
+          customIndustryDescription={customIndustryDescription}
+          elapsed={elapsed}
+          onEndCall={(transcript) =>
+            navigate("/breakdown", {
+              state: {
+                persona,
+                industry,
+                difficulty,
+                duration: elapsed,
+                transcript,
+                challengeId,
+                challengeName,
+                challengeGoal,
+                challengePassScore,
+              },
+            })
+          }
+        />
+      );
+    }
+
+    // Fallback: non-Pro users who somehow got here go to old TTS CallScreen
     return (
       <CallScreen
         prospectName={prospectName || personaData.label}
@@ -253,7 +288,10 @@ export default function Simulation() {
         isIOS={voice.isIOS}
         onMicDown={() => voice.startHoldToTalk()}
         onMicUp={() => voice.stopHoldToTalk()}
-        onToggleMic={() => { if (voice.isListening) { voice.stopListening(); } else { void voice.startListening(true); } }}
+        onToggleMic={() => {
+          if (voice.isListening) { voice.stopListening(); }
+          else { void voice.startListening(true); }
+        }}
         onEndCall={endCall}
       />
     );
