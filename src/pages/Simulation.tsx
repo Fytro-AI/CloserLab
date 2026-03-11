@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { PhoneOff, Send, Clock, X } from "lucide-react";
+import { PhoneOff, Send, Clock, X, Loader2 } from "lucide-react";
 import { PERSONAS } from "@/lib/game-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useVoiceMode } from "@/hooks/useVoiceMode";
@@ -38,7 +38,8 @@ export default function Simulation() {
   const [elapsed, setElapsed] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
   const [voiceEnabled] = useState(initialVoiceMode);
-  const { profile } = useProfile();
+  
+  const { profile, loading: profileLoading } = useProfile();
 
   // Coach tip state
   const [coachTip, setCoachTip] = useState<string | null>(null);
@@ -63,7 +64,7 @@ export default function Simulation() {
   const isRealtimePro = voiceEnabled && profile?.subscription_tier === "pro";
 
   const voice = useVoiceMode({
-    enabled: voiceEnabled && !isRealtimePro,
+    enabled: voiceEnabled && !isRealtimePro && !profileLoading,
     onTranscript: handleVoiceTranscript,
   });
 
@@ -244,6 +245,15 @@ export default function Simulation() {
   const lastAIMessage = [...messages].reverse().find(m => m.role === "assistant")?.content || "";
 
   if (voiceEnabled) {
+    // Wait for profile to load before deciding which call mode to use
+    if (profileLoading) {
+      return (
+        <div className="fixed inset-0 bg-background flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+    
     if (profile?.subscription_tier === "pro") {
       return (
         <RealtimeCall

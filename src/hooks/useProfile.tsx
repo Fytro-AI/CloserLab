@@ -18,7 +18,7 @@ export interface Profile {
   weekly_calls_count: number;
   week_start: string | null;
   last_call_date: string | null;
-  subscription_tier: "starter" | "pro" | null;
+  subscription_tier?: "starter" | "pro" | null;
 }
 
 export function useProfile() {
@@ -34,7 +34,7 @@ export function useProfile() {
       .eq("user_id", user.id)
       .maybeSingle();
 
-    let resolvedProfile = data as Profile | null;
+    let resolvedProfile = data as unknown as Profile | null;
 
     // Self-heal missing profile rows (can happen for older accounts)
     if (!resolvedProfile) {
@@ -49,7 +49,7 @@ export function useProfile() {
         .select("*")
         .single();
 
-      resolvedProfile = inserted as Profile;
+      resolvedProfile = inserted as unknown as Profile;
     }
 
     setProfile(resolvedProfile);
