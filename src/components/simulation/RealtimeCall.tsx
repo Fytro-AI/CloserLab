@@ -33,39 +33,6 @@ const DIFFICULTY_PROMPTS: Record<string, string> = {
   nightmare: "Be nearly impossible. Shut down almost everything. Only the most elite pitch would move you.",
 };
 
-function buildSystemPrompt(props: RealtimeCallProps): string {
-  const personaPrompt = PERSONA_PROMPTS[props.persona] || PERSONA_PROMPTS.skeptical;
-  const difficultyPrompt = DIFFICULTY_PROMPTS[props.difficulty] || DIFFICULTY_PROMPTS.medium;
-  const prospectContext = props.prospectName
-    ? `Your name is ${props.prospectName}. You work at ${props.prospectCompany || "a company"}. Background: ${props.prospectBackstory || ""}`
-    : "";
-  const industryContext = props.customIndustryDescription
-    ? `INDUSTRY CONTEXT: ${props.customIndustryDescription}`
-    : `You are a buyer in the ${props.industry} industry.`;
-
-  return `You are a realistic buyer in a voice sales roleplay simulation.
-${prospectContext}
-
-${industryContext}
-
-BUYER PERSONALITY:
-${props.challengeSystemPrompt || personaPrompt}
-
-DIFFICULTY: ${props.difficulty.toUpperCase()}
-${difficultyPrompt}
-
-CRITICAL RULES:
-1. NEVER break character. You are a real buyer, not an AI.
-2. NEVER help the seller or coach them.
-3. Keep responses short — this is a phone call, not a lecture. 1-3 sentences max.
-4. React naturally. Be unpredictable. Push back on vague claims.
-5. If the seller is rude or uses profanity, say "I don't have time for this." and end the call.
-6. You are evaluating whether to buy — act like a real decision-maker with real money on the line.
-7. This is a VOICE call. Speak naturally, use natural speech patterns.
-8. Use the seller's name once they introduce themselves.
-9. Reference specific things the seller said earlier in the call.`;
-}
-
 export default function RealtimeCall({
   persona,
   industry,
@@ -181,17 +148,18 @@ export default function RealtimeCall({
       setErrorMsg(null);
       userHasSpokenRef.current = false;
 
-      // 1. Get ephemeral token
-      const systemPrompt = buildSystemPrompt({
-        persona, industry, difficulty,
-        prospectName, prospectCompany, prospectBackstory,
-        challengeSystemPrompt, customIndustryDescription,
-        elapsed, onEndCall,
-      });
-
       const tokenResp = await supabase.functions.invoke("realtime-token", {
-        body: { systemPrompt },
-      });
+      body: {
+        persona,
+        industry,
+        difficulty,
+        prospectName,
+        prospectCompany,
+        prospectBackstory,
+        challengeSystemPrompt,
+        customIndustryDescription,
+      },
+    });
 
       if (tokenResp.error || !tokenResp.data?.client_secret) {
         throw new Error(tokenResp.data?.error || "Failed to get voice session token");
