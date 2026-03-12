@@ -3,7 +3,7 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const STARTER_PRICE_IDS = [
-  "price_1T813ePNpQaZotKHM50KaI6O",
+  "price_1T812UPNpQaZotKHNKkIOFAW",
   "price_1T9rrSPNpQaZotKHNxsyxpAD",
 ];
 const PRO_PRICE_IDS = [
