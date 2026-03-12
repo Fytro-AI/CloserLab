@@ -250,14 +250,29 @@ serve(async (req) => {
 
     // ── Pro tier check ────────────────────────────────────────────────────────
     const { data: profile } = await supabaseClient
-      .from("profiles")
-      .select("subscription_tier")
-      .eq("user_id", userData.user.id)
-      .single();
+    .from("profiles")
+    .select("subscription_tier, daily_voice_minutes, last_voice_date")
+    .eq("user_id", userData.user.id)
+    .single();
 
     if (profile?.subscription_tier !== "pro") {
       return new Response(JSON.stringify({ error: "Pro subscription required for voice calls" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    // Reset counter if it's a new day
+    if (profile.last_voice_date !== today) {
+      await supabaseClient
+        .from("profiles")
+        .update({ daily_voice_minutes: 0, last_voice_date: today })
+        .eq("user_id", userData.user.id);
+      profile.daily_voice_minutes = 0;
+    }
+    // Block if over limit (e.g. 30 minutes/day)
+    if (profile.daily_voice_minutes >= 30) {
+      return new Response(JSON.stringify({ error: "Daily voice limit reached. Resets at midnight." }), {
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 

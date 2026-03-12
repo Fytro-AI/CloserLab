@@ -260,9 +260,16 @@ export default function RealtimeCall({
     }
   };
 
-  const handleEndCall = () => {
+  const handleEndCall = async () => {
     cleanup();
     setStatus("ended");
+    
+    // Track voice minutes used
+    const minutesUsed = Math.ceil(elapsed / 60);
+    await supabase.functions.invoke("track-voice-usage", {
+      body: { minutesUsed },
+    });
+    
     onEndCall(transcript);
   };
 
