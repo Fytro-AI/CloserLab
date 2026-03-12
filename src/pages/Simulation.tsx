@@ -44,7 +44,6 @@ export default function Simulation() {
         prospectBackstory={prospectBackstory}
         challengeSystemPrompt={challengeSystemPrompt}
         customIndustryDescription={customIndustryDescription}
-        elapsed={0}
         onEndCall={(transcript) =>
           navigate("/breakdown", {
             state: { persona, industry, difficulty, duration: 0, transcript, challengeId, challengeName, challengeGoal, challengePassScore },
