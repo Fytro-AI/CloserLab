@@ -12,7 +12,6 @@ interface RealtimeCallProps {
   prospectBackstory?: string;
   challengeSystemPrompt?: string;
   customIndustryDescription?: string;
-  elapsed: number;
   onEndCall: (transcript: { role: "user" | "assistant"; content: string }[]) => void;
 }
 
@@ -42,7 +41,6 @@ export default function RealtimeCall({
   prospectBackstory,
   challengeSystemPrompt,
   customIndustryDescription,
-  elapsed,
   onEndCall,
 }: RealtimeCallProps) {
   const personaData = PERSONAS.find((p) => p.id === persona) || PERSONAS[0];
@@ -62,6 +60,14 @@ export default function RealtimeCall({
 
   // ── KEY GUARD: only allow response.create after user has actually spoken ──
   const userHasSpokenRef = useRef(false);
+
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (status !== "connected") return;
+    const t = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(t);
+  }, [status]);
 
   const formatTime = (s: number) =>
     `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
@@ -263,13 +269,14 @@ export default function RealtimeCall({
   const handleEndCall = async () => {
     cleanup();
     setStatus("ended");
-    
-    // Track voice minutes used
+
     const minutesUsed = Math.ceil(elapsed / 60);
-    await supabase.functions.invoke("track-voice-usage", {
-      body: { minutesUsed },
-    });
-    
+    if (minutesUsed > 0) {
+      await supabase.functions.invoke("track-voice-usage", {
+        body: { minutesUsed },
+      });
+    }
+
     onEndCall(transcript);
   };
 
