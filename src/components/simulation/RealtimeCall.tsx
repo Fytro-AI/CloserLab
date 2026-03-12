@@ -192,6 +192,20 @@ export default function RealtimeCall({
       dc.onmessage = handleDataChannelMessage;
       dc.onopen = () => {
         setStatus("connected");
+        
+        // Inject a silent conversation primer so the AI knows it already picked up
+        // This prevents it from defaulting to seller mode on first response
+        if (dcRef.current?.readyState === "open") {
+          dcRef.current.send(JSON.stringify({
+            type: "conversation.item.create",
+            item: {
+              type: "message",
+              role: "user",
+              content: [{ type: "input_text", text: "(Phone ringing — you pick up)" }],
+            },
+          }));
+          dcRef.current.send(JSON.stringify({ type: "response.create" }));
+        }
       };
 
       // 7. SDP offer
