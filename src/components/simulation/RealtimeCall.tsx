@@ -69,6 +69,12 @@ export default function RealtimeCall({
     return () => clearInterval(t);
   }, [status]);
 
+  useEffect(() => {
+    if (elapsed >= 600) {
+      handleEndCall();
+    }
+  }, [elapsed]);
+
   const formatTime = (s: number) =>
     `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
 
@@ -78,7 +84,6 @@ export default function RealtimeCall({
 
       switch (msg.type) {
 
-        // ── AI speaking ───────────────────────────────────────────────────────
         case "response.audio.delta":
           setIsSpeaking(true);
           break;
@@ -87,7 +92,6 @@ export default function RealtimeCall({
           setIsSpeaking(false);
           break;
 
-        // ── AI transcript ─────────────────────────────────────────────────────
         case "response.audio_transcript.delta":
           currentAssistantRef.current += msg.delta || "";
           break;
@@ -102,7 +106,6 @@ export default function RealtimeCall({
           currentAssistantRef.current = "";
           break;
 
-        // ── User transcript ───────────────────────────────────────────────────
         case "conversation.item.input_audio_transcription.completed":
           if (msg.transcript?.trim()) {
             setTranscript((prev) => [
@@ -112,9 +115,7 @@ export default function RealtimeCall({
           }
           break;
 
-        // ── User voice activity ───────────────────────────────────────────────
         case "input_audio_buffer.speech_started":
-          // Mark that the user has genuinely spoken at least once
           userHasSpokenRef.current = true;
           setIsUserSpeaking(true);
           break;
@@ -123,7 +124,6 @@ export default function RealtimeCall({
           setIsUserSpeaking(false);
           break;
 
-        // ── Only fire response AFTER user has actually spoken ─────────────────
         case "input_audio_buffer.committed":
           if (userHasSpokenRef.current && dcRef.current?.readyState === "open") {
             dcRef.current.send(JSON.stringify({ type: "response.create" }));
@@ -173,15 +173,12 @@ export default function RealtimeCall({
 
       const ephemeralKey = tokenResp.data.client_secret.value;
 
-      // 2. Get mic access
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       localStreamRef.current = stream;
 
-      // 3. Create WebRTC peer connection
       const pc = new RTCPeerConnection();
       pcRef.current = pc;
 
-      // 4. Remote audio playback
       const audioEl = document.createElement("audio");
       audioEl.autoplay = true;
       audioRef.current = audioEl;
@@ -189,18 +186,14 @@ export default function RealtimeCall({
         audioEl.srcObject = e.streams[0];
       };
 
-      // 5. Add local mic track
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
-      // 6. Data channel for events
       const dc = pc.createDataChannel("oai-events");
       dcRef.current = dc;
       dc.onmessage = handleDataChannelMessage;
       dc.onopen = () => {
         setStatus("connected");
         
-        // Inject a silent conversation primer so the AI knows it already picked up
-        // This prevents it from defaulting to seller mode on first response
         if (dcRef.current?.readyState === "open") {
           dcRef.current.send(JSON.stringify({
             type: "conversation.item.create",
@@ -214,11 +207,9 @@ export default function RealtimeCall({
         }
       };
 
-      // 7. SDP offer
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      // 8. Send to OpenAI
       const sdpResp = await fetch(
         "https://api.openai.com/v1/realtime?model=gpt-realtime-mini",
         {
@@ -280,7 +271,6 @@ export default function RealtimeCall({
     onEndCall(transcript);
   };
 
-  // ── Error screen ────────────────────────────────────────────────────────────
   if (status === "error") {
     return (
       <div className="fixed inset-0 bg-background flex flex-col items-center justify-center gap-6 px-4">
@@ -303,11 +293,9 @@ export default function RealtimeCall({
     );
   }
 
-  // ── Main call UI ────────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 bg-background flex flex-col items-center justify-center gap-8 px-4">
 
-      {/* Connecting overlay */}
       {status === "connecting" && (
         <div className="absolute inset-0 bg-background/90 flex flex-col items-center justify-center gap-4 z-10">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -315,7 +303,6 @@ export default function RealtimeCall({
         </div>
       )}
 
-      {/* Prospect avatar */}
       <div className="flex flex-col items-center gap-3">
         <div
           className="relative flex items-center justify-center rounded-full bg-secondary border-2 transition-all duration-300"
@@ -340,7 +327,6 @@ export default function RealtimeCall({
         </div>
       </div>
 
-      {/* Timer + speaking indicator */}
       <div className="flex flex-col items-center gap-2">
         <div className="flex items-center gap-2">
           <div
@@ -368,7 +354,6 @@ export default function RealtimeCall({
         </div>
       </div>
 
-      {/* Last 2 transcript lines */}
       {transcript.length > 0 && (
         <div className="w-full max-w-sm space-y-2 px-2">
           {transcript.slice(-2).map((t, i) => (
@@ -386,7 +371,6 @@ export default function RealtimeCall({
         </div>
       )}
 
-      {/* Controls */}
       <div className="flex items-center gap-6">
         <button onClick={toggleMute} className="flex flex-col items-center gap-1">
           <div

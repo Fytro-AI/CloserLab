@@ -9,9 +9,6 @@ import { useProfile } from "@/hooks/useProfile";
 const FIRST_NAMES = ["Jordan", "Alex", "Morgan", "Taylor", "Riley", "Casey", "Quinn", "Drew", "Avery", "Blake"];
 const LAST_NAMES = ["Reeves", "Chen", "Nakamura", "Okafor", "Lindström", "Patel", "Torres", "Andersson", "Kim", "Dubois"];
 
-// Special testers who get voice calls unlocked
-const VOICE_TESTERS = ["Butterfingers", "Jake", "Conor"];
-
 const COMPANY_TEMPLATES: Record<string, string[]> = {
   saas: ["{last} Systems", "{last} Cloud", "NovaTech Solutions", "{first}Ware"],
   "macro-intelligence": ["{last} Capital Research", "Meridian Analytics", "{last} Macro Group", "AlphaSignal"],
@@ -62,7 +59,6 @@ export default function Scenarios() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { profile, canStartSimulation, remainingSimulations } = useProfile();
-  const isVoiceTester = VOICE_TESTERS.includes(profile?.name || "");
   const [industry, setIndustry] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState<string | null>(null);
   const [persona, setPersona] = useState<string | null>(null);
@@ -240,8 +236,8 @@ export default function Scenarios() {
             <div className="text-xs text-muted-foreground">Type your pitch</div>
           </button>
           <button
-            onClick={() => (profile?.is_pro || isVoiceTester) && !isMobile && setVoiceMode(true)}
-            disabled={(!profile?.is_pro && !isVoiceTester) || isMobile}
+            onClick={() => profile?.is_pro && !isMobile && setVoiceMode(true)}
+            disabled={!profile?.is_pro || isMobile}
             className={`rounded-lg border p-4 text-left transition-all relative ${
               !profile?.is_pro || isMobile
                 ? "border-border bg-card opacity-50 cursor-not-allowed"
@@ -261,10 +257,10 @@ export default function Scenarios() {
             </div>
             <div className="text-xs text-muted-foreground">
               {isMobile
-              ? "Desktop only — not available on mobile"
-              : profile?.is_pro || isVoiceTester
-              ? "Speak your pitch aloud"
-              : "Pro feature — upgrade to unlock"}
+                ? "Desktop only — not available on mobile"
+                : profile?.is_pro
+                ? "Speak your pitch aloud"
+                : "Pro feature — upgrade to unlock"}
             </div>
           </button>
         </div>
@@ -337,4 +333,4 @@ export default function Scenarios() {
       )}
     </div>
   );
-}
+} 

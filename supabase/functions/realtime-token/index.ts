@@ -227,7 +227,6 @@ serve(async (req) => {
   }
 
   try {
-    // ── Auth check ────────────────────────────────────────────────────────────
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Authentication required" }), {
@@ -248,7 +247,6 @@ serve(async (req) => {
       });
     }
 
-    // ── Pro tier check ────────────────────────────────────────────────────────
     const { data: profile } = await supabaseClient
     .from("profiles")
     .select("subscription_tier, daily_voice_minutes, last_voice_date")
@@ -261,7 +259,6 @@ serve(async (req) => {
       });
     }
     const today = new Date().toISOString().slice(0, 10);
-    // Reset counter if it's a new day
     if (profile.last_voice_date !== today) {
       await supabaseClient
         .from("profiles")
@@ -269,8 +266,7 @@ serve(async (req) => {
         .eq("user_id", userData.user.id);
       profile.daily_voice_minutes = 0;
     }
-    // Block if over limit (e.g. 30 minutes/day)
-    if (profile.daily_voice_minutes >= 30) {
+    if (profile.daily_voice_minutes >= 45) {
       return new Response(JSON.stringify({ error: "Daily voice limit reached. Resets at midnight." }), {
         status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -283,7 +279,6 @@ serve(async (req) => {
       });
     }
 
-    // ── Parse request body ────────────────────────────────────────────────────
     const body = await req.json();
 
     const persona = clampText(body.persona, 50) || "skeptical";
@@ -301,7 +296,6 @@ serve(async (req) => {
       challengeSystemPrompt, customIndustryDescription,
     });
 
-    // ── Create ephemeral session with OpenAI ──────────────────────────────────
     const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
       method: "POST",
       headers: {
