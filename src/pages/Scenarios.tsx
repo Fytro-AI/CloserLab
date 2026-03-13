@@ -236,17 +236,18 @@ export default function Scenarios() {
             <div className="text-xs text-muted-foreground">Type your pitch</div>
           </button>
           <button
-            onClick={() => profile?.is_pro && !isMobile && setVoiceMode(true)}
-            disabled={!profile?.is_pro || isMobile}
+            onClick={() => profile?.is_pro && setVoiceMode(true)}
+            disabled={!profile?.is_pro}
             className={`rounded-lg border p-4 text-left transition-all relative ${
-              !profile?.is_pro || isMobile
+              !profile?.is_pro
                 ? "border-border bg-card opacity-50 cursor-not-allowed"
                 : voiceMode
                 ? "border-primary bg-primary/10 card-glow"
                 : "border-border bg-card hover:border-primary/30 card-glow-hover"
             }`}
+            //TODO: || isMobile
           >
-            {(!profile?.is_pro || isMobile) && (
+            {(!profile?.is_pro) && (
               <div className="absolute top-2 right-2 flex items-center gap-1">
                 {!profile?.is_pro && <Crown className="h-4 w-4 text-accent" />}
                 {isMobile && <Monitor className="h-4 w-4 text-muted-foreground" />}
@@ -256,9 +257,7 @@ export default function Scenarios() {
               <Mic className="h-4 w-4" /> Voice Call
             </div>
             <div className="text-xs text-muted-foreground">
-              {isMobile
-                ? "Desktop only — not available on mobile"
-                : profile?.is_pro
+              {profile?.is_pro
                 ? "Speak your pitch aloud"
                 : "Pro feature — upgrade to unlock"}
             </div>

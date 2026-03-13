@@ -162,10 +162,10 @@ export function useVoiceMode({ enabled, onTranscript }: UseVoiceModeOptions) {
       latestInterimRef.current = "";
       clearInterimCommitTimer();
 
-      // Desktop only: try one automatic restart for transient errors
-      if (!isIOS && shouldKeepListeningRef.current && error !== "not-allowed" && error !== "service-not-allowed") {
-        window.setTimeout(() => startRecognitionSession(), 300);
-      }
+      // // Desktop only: try one automatic restart for transient errors
+      // if (!isIOS && shouldKeepListeningRef.current && error !== "not-allowed" && error !== "service-not-allowed") {
+      //   window.setTimeout(() => startRecognitionSession(), 300);
+      // }
     };
 
     recognition.onend = () => {
