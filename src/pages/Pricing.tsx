@@ -4,9 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/useProfile";
 
 const PRICES = {
-  starter_monthly: "price_1T812UPNpQaZotKHNKkIOFAW",
+  starter_monthly: "price_1T9rpNPNpQaZotKHqrLD9fnS",
   starter_yearly:  "price_1T9rrSPNpQaZotKHNxsyxpAD",
-  pro_monthly:     "price_1T813ePNpQaZotKHM50KaI6O",
+  pro_monthly:     "price_1T9rx3PNpQaZotKHzAmrOT3F",
   pro_yearly:      "price_1T9s39PNpQaZotKHp1Ji6V5m",
 };
 

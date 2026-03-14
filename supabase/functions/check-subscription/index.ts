@@ -3,11 +3,11 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const STARTER_PRICE_IDS = [
-  "price_1T812UPNpQaZotKHNKkIOFAW",
+  "price_1T9rpNPNpQaZotKHqrLD9fnS",
   "price_1T9rrSPNpQaZotKHNxsyxpAD",
 ];
 const PRO_PRICE_IDS = [
-  "price_1T813ePNpQaZotKHM50KaI6O",
+  "price_1T9rx3PNpQaZotKHzAmrOT3F",
   "price_1T9s39PNpQaZotKHp1Ji6V5m",
 ];
 
@@ -31,7 +31,7 @@ serve(async (req) => {
   );
 
   try {
-    const stripeKey = Deno.env.get("STRIPE_TEST_SECRET_KEY");
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) {
       console.error("STRIPE_SECRET_KEY not configured");
       return new Response(JSON.stringify({ error: "Service configuration error" }), {
@@ -62,6 +62,24 @@ serve(async (req) => {
     const user = userData.user;
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+        // ── Beta tester check — skip Stripe entirely ──────────────────────────────
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("is_beta_tester")
+      .eq("user_id", user.id)
+      .single();
+
+    if (profile?.is_beta_tester) {
+      await supabaseAdmin.from("profiles").update({
+        is_pro: true,
+        subscription_tier: "pro",
+      }).eq("user_id", user.id);
+      return new Response(JSON.stringify({ subscribed: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
     if (customers.data.length === 0) {
