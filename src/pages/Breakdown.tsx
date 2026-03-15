@@ -72,6 +72,7 @@ export default function Breakdown() {
       if (resp.error) {
         // Extract the actual error message from the API response
         const errorMsg = resp.data?.error || resp.error?.message || "Failed to score call";
+        console.log("score-call error response:", resp.data, resp.error);
         throw new Error(errorMsg);
       }
 
