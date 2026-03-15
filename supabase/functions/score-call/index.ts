@@ -67,6 +67,15 @@ serve(async (req) => {
     const safeDifficulty = VALID_DIFFICULTIES.includes(difficulty) ? difficulty : "medium";
     const safePersona = VALID_PERSONAS.includes(persona) ? persona : "skeptical";
 
+    // Check if user said anything at all
+    const userMessages = transcript.filter((m: { role: string }) => m.role === "user");
+    if (userMessages.length === 0) {
+      return new Response(JSON.stringify({ error: "No speech detected. Try the call again and speak into your mic." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // --- System prompt ---
     const systemPrompt = `You are an elite sales coach analyzing a sales call transcript. The seller was practicing against a ${safePersona} buyer in the ${safeIndustry} industry at ${safeDifficulty} difficulty.
 
