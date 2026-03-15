@@ -65,24 +65,28 @@ export default function Breakdown() {
 
   const scoreCall = async () => {
     try {
-      const resp = await supabase.functions.invoke("score-call", {
-        body: { transcript, industry, difficulty, persona },
-      });
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
 
-      console.log("score-call response:", JSON.stringify(resp.data), JSON.stringify(resp.error));
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/score-call`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ transcript, industry, difficulty, persona }),
+        }
+      );
 
-      if (resp.error) {
-        // Supabase doesn't parse error bodies automatically, fetch it manually
-        let errorMsg = "Failed to score call";
-        try {
-          const body = await (resp.error as any).context?.json();
-          errorMsg = body?.error || errorMsg;
-        } catch {}
-        throw new Error(errorMsg);
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        throw new Error(data?.error || "Failed to score call");
       }
 
-      const data = resp.data as Scores;
-      setScores(data);
+      setScores(data as Scores);
     } catch (e: any) {
       console.error("Scoring error:", e);
       setError(e.message || "Failed to score call");
