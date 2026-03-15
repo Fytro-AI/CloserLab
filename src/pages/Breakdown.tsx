@@ -69,10 +69,10 @@ export default function Breakdown() {
         body: { transcript, industry, difficulty, persona },
       });
 
+      console.log("score-call response:", JSON.stringify(resp.data), JSON.stringify(resp.error));
+
       if (resp.error) {
-        // Extract the actual error message from the API response
         const errorMsg = resp.data?.error || resp.error?.message || "Failed to score call";
-        console.log("score-call error response:", resp.data, resp.error);
         throw new Error(errorMsg);
       }
 
