@@ -72,7 +72,12 @@ export default function Breakdown() {
       console.log("score-call response:", JSON.stringify(resp.data), JSON.stringify(resp.error));
 
       if (resp.error) {
-        const errorMsg = resp.data?.error || resp.error?.message || "Failed to score call";
+        // Supabase doesn't parse error bodies automatically, fetch it manually
+        let errorMsg = "Failed to score call";
+        try {
+          const body = await (resp.error as any).context?.json();
+          errorMsg = body?.error || errorMsg;
+        } catch {}
         throw new Error(errorMsg);
       }
 
