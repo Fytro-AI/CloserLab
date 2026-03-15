@@ -69,7 +69,11 @@ export default function Breakdown() {
         body: { transcript, industry, difficulty, persona },
       });
 
-      if (resp.error) throw new Error(resp.error.message);
+      if (resp.error) {
+        // Extract the actual error message from the API response
+        const errorMsg = resp.data?.error || resp.error.message;
+        throw new Error(errorMsg);
+      }
 
       const data = resp.data as Scores;
       setScores(data);
@@ -171,11 +175,19 @@ export default function Breakdown() {
   }
 
   if (error || !scores) {
+    const isNoSpeech = error?.includes("No speech detected");
     return (
       <div className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center gap-4 px-4">
+        <div className="text-4xl">{isNoSpeech ? "🎤" : "😅"}</div>
         <div className="text-center space-y-2">
-          <h2 className="text-xl font-bold text-foreground">Scoring failed</h2>
-          <p className="text-sm text-muted-foreground">{error || "Could not analyze the call."}</p>
+          <h2 className="text-xl font-bold text-foreground">
+            {isNoSpeech ? "We didn't hear anything" : "Scoring failed"}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {isNoSpeech
+              ? "Make sure your mic is working and try speaking during the call."
+              : error || "Could not analyze the call."}
+          </p>
         </div>
         <Link to="/scenarios" className="text-primary font-semibold hover:underline">
           Try again
