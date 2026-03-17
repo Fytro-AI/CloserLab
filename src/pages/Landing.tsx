@@ -20,8 +20,10 @@ function Hero() {
         </div>
 
         <h1 className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight text-foreground leading-[1.1]">
-          Practice Like<br />
-          <span className="text-primary text-glow">Revenue Depends On It.</span>
+          Train Like the<br />
+          <span className="text-primary text-glow">Deal</span>
+          <span className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight text-foreground leading-[1.1]">
+            Depends On It.</span>
         </h1>
 
         <p className="max-w-2xl mx-auto text-lg sm:text-xl text-muted-foreground leading-relaxed">
