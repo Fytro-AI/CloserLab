@@ -100,7 +100,7 @@ function HowItWorks() {
       icon: Swords,
       number: "02",
       title: "Enter The Simulation",
-      description: "AI buyer pushes back, interrupts, objects, tests you. No scripts, no safety net, just pressure.",
+      description: "AI buyer pushes back, interrupts, hangs up on you, objects, tests you. No scripts, no safety net, just pressure.",
     },
     {
       icon: Brain,
@@ -162,6 +162,11 @@ function ProgressionSection() {
     { name: "Closer", icon: "🟣", xp: "1,500" },
     { name: "Shark", icon: "🔴", xp: "3,500" },
     { name: "Wolf", icon: "🐺", xp: "7,000" },
+    { name: "Apex", icon: "🦅", xp: "12000", },
+    { name: "Titan", icon: "⚡", xp: "20000" },
+    { name: "Phantom", icon: "👻", xp: "35000" },
+    { name: "Legend", icon: "🔱", xp: "55000" },
+    { name: "Godfather", icon: "👑", xp: "100000" },
   ];
 
   return (
@@ -177,7 +182,7 @@ function ProgressionSection() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { icon: Zap, label: "XP System", desc: "Earn points for every simulation" },
-            { icon: Trophy, label: "Rank Progression", desc: "Climb from Rookie to Wolf" },
+            { icon: Trophy, label: "Rank Progression", desc: "Climb from Rookie to Godfather" },
             { icon: BarChart3, label: "Skill Heatmap", desc: "See strengths and gaps" },
             { icon: TrendingUp, label: "Performance Trends", desc: "Track improvement over time" },
           ].map((f) => (
@@ -289,7 +294,7 @@ function PricingSection() {
       features: [
         "Everything in Starter",
         "🎙️ Realtime AI voice calls",
-        "10 voice sessions/day",
+        "45 voice calling minutes/day",
         "Live objection coaching",
         "Weekly coaching reports",
       ],
@@ -377,7 +382,6 @@ function SocialProof() {
           <p className="text-xl sm:text-2xl font-bold text-foreground">
             Testers increased their confidence score by 30% in 2 weeks.
           </p>
-          <p className="text-muted-foreground text-sm">Based on early tester data across multiple industries.</p>
         </div>
       </div>
     </section>

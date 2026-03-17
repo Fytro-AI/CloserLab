@@ -59,7 +59,7 @@ const PLANS = [
     features: [
       "Everything in Starter",
       "🎙️ Realtime AI voice calls",
-      "10 voice sessions per day",
+      "45 voice calling minutes/day",
       "Live objection coaching",
       "Priority AI models",
       "Weekly coaching reports",
