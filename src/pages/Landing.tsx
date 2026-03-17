@@ -21,7 +21,7 @@ function Hero() {
 
         <h1 className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight text-foreground leading-[1.1]">
           Train Like the<br />
-          <span className="text-primary text-glow">Deal</span>
+          <span className="text-primary text-glow">Deal </span>
           <span className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight text-foreground leading-[1.1]">
             Depends On It.</span>
         </h1>
