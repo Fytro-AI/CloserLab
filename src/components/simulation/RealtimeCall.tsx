@@ -150,7 +150,7 @@ export default function RealtimeCall({
     // Preload all clips upfront
     spotPoolRef.current = SPOT_EFFECTS.map((url) => {
       const a = new Audio(url);
-      a.volume = 0.2;
+      a.volume = 0.5;
       a.preload = "auto";
       return a;
     });
@@ -196,7 +196,7 @@ export default function RealtimeCall({
     try {
       const amb = new Audio(AMBIENT_URL);
       amb.loop = true;
-      amb.volume = 0.3;
+      amb.volume = 0.5;
       amb.play().catch(() => {});
       ambientRef.current = amb;
     } catch (e) {
