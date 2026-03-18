@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
-import { ArrowRight, CheckCircle, XCircle, TrendingUp, Zap, Loader2, Trophy, X } from "lucide-react";
+import { ArrowRight, CheckCircle, XCircle, TrendingUp, Zap, Loader2, Trophy, X, Target } from "lucide-react";
 import SkillBar from "@/components/SkillBar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,6 +14,11 @@ interface Scores {
   objection_handling_score: number;
   clarity_score: number;
   closing_score: number;
+  // Meeting Setter specific
+  speed_to_value_score?: number;
+  clarity_of_ask_score?: number;
+  booking_attempt_score?: number;
+  meeting_booked?: boolean;
   strengths: string[];
   weaknesses: string[];
   missed_opportunities: string[];
@@ -28,9 +33,19 @@ export default function Breakdown() {
   const { saveCompletion } = useChallengeCompletions();
   const state = (location.state as any) || {};
   const {
-    transcript = [], industry = "saas", difficulty = "easy", persona = "skeptical", duration = 0,
-    challengeId, challengeName, challengeGoal, challengePassScore,
+    transcript = [],
+    industry = "saas",
+    difficulty = "easy",
+    persona = "skeptical",
+    duration = 0,
+    simulationMode = "discovery",
+    challengeId,
+    challengeName,
+    challengeGoal,
+    challengePassScore,
   } = state;
+
+  const isMeetingSetter = simulationMode === "meeting-setter";
 
   const [scores, setScores] = useState<Scores | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,7 +61,6 @@ export default function Breakdown() {
     scoreCall();
   }, []);
 
-  // Save results once profile is loaded and scores are ready
   useEffect(() => {
     if (scores && user && profile && !savedRef.current && !profileLoading) {
       savedRef.current = true;
@@ -55,7 +69,6 @@ export default function Breakdown() {
       setXpEarned(earned);
       saveResults(scores, earned);
 
-      // Save challenge completion if this was a challenge
       if (challengeId) {
         const passed = scores.overall_score >= (challengePassScore || 70);
         saveCompletion(challengeId, difficulty, scores.overall_score, passed, earned);
@@ -76,7 +89,7 @@ export default function Breakdown() {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({ transcript, industry, difficulty, persona }),
+          body: JSON.stringify({ transcript, industry, difficulty, persona, simulationMode }),
         }
       );
 
@@ -98,7 +111,6 @@ export default function Breakdown() {
   const saveResults = async (data: Scores, earned: number) => {
     if (!user || !profile) return;
 
-    // Save call history
     await supabase.from("call_history").insert({
       user_id: user.id,
       industry,
@@ -118,12 +130,10 @@ export default function Breakdown() {
       transcript,
     });
 
-    // Update profile
     const newXp = profile.xp + earned;
     const today = new Date().toISOString().split("T")[0];
     const lastCallDate = profile.last_call_date;
 
-    // Streak logic
     let newStreak = profile.streak;
     if (lastCallDate) {
       const last = new Date(lastCallDate);
@@ -134,10 +144,9 @@ export default function Breakdown() {
       newStreak = 1;
     }
 
-    // Weekly calls tracking
-    const now = new Date();
     let weeklyCount = profile.weekly_calls_count;
     let weekStart = profile.week_start;
+    const now = new Date();
     if (weekStart) {
       const ws = new Date(weekStart);
       const daysSince = Math.floor((now.getTime() - ws.getTime()) / (1000 * 60 * 60 * 24));
@@ -152,7 +161,6 @@ export default function Breakdown() {
       weekStart = today;
     }
 
-    // Update skill averages (weighted: 70% old, 30% new)
     const blend = (old: number, fresh: number) => Math.round(old * 0.7 + fresh * 0.3);
 
     await supabase.from("profiles").update({
@@ -177,8 +185,12 @@ export default function Breakdown() {
       <div className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 text-primary animate-spin" />
         <div className="text-center">
-          <h2 className="text-xl font-bold text-foreground">Analyzing your call...</h2>
-          <p className="text-sm text-muted-foreground mt-1">Our AI coach is reviewing every word.</p>
+          <h2 className="text-xl font-bold text-foreground">
+            {isMeetingSetter ? "Scoring your cold call..." : "Analyzing your call..."}
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            {isMeetingSetter ? "Did you earn the meeting?" : "Our AI coach is reviewing every word."}
+          </p>
         </div>
       </div>
     );
@@ -209,12 +221,43 @@ export default function Breakdown() {
   return (
     <div className="container mx-auto max-w-2xl px-4 py-8 space-y-6 animate-slide-up">
       <div className="text-center space-y-2">
-        <h1 className="text-3xl font-black text-foreground">Call Complete.</h1>
-        <p className="text-muted-foreground">Here's your debrief, soldier.</p>
+        <h1 className="text-3xl font-black text-foreground">
+          {isMeetingSetter ? "Cold Call Complete." : "Call Complete."}
+        </h1>
+        <p className="text-muted-foreground">
+          {isMeetingSetter ? "Here's how you did on the cold call." : "Here's your debrief, soldier."}
+        </p>
       </div>
 
+      {/* Meeting Setter result banner */}
+      {isMeetingSetter && (
+        <div className={`rounded-lg border p-5 text-center ${
+          scores.meeting_booked
+            ? "border-success/30 bg-success/10"
+            : "border-destructive/30 bg-destructive/10"
+        }`}>
+          <div className="flex items-center justify-center gap-2 mb-1">
+            {scores.meeting_booked ? (
+              <Target className="h-6 w-6 text-success" />
+            ) : (
+              <X className="h-6 w-6 text-destructive" />
+            )}
+            <span className={`text-lg font-black uppercase tracking-wider ${
+              scores.meeting_booked ? "text-success" : "text-destructive"
+            }`}>
+              {scores.meeting_booked ? "Meeting Booked 🎯" : "No Meeting Booked"}
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            {scores.meeting_booked
+              ? "You earned the follow-up. That's the whole game."
+              : "The prospect didn't commit. Review the feedback below."}
+          </p>
+        </div>
+      )}
+
       {/* Challenge Result Banner */}
-      {challengeId && (
+      {challengeId && !isMeetingSetter && (
         <div className={`rounded-lg border p-5 text-center ${
           scores.overall_score >= (challengePassScore || 70)
             ? "border-success/30 bg-success/10"
@@ -242,19 +285,41 @@ export default function Breakdown() {
       <div className="rounded-lg border border-border bg-card p-8 text-center card-glow">
         <div className="text-6xl font-black text-primary text-glow mb-2">{scores.overall_score}</div>
         <p className="text-sm text-muted-foreground uppercase tracking-widest">Overall Score</p>
-        <div className="mt-4 flex items-center justify-center gap-2 text-accent font-bold">
-          <Zap className="h-5 w-5" />
-          +{xpEarned} XP Earned
-        </div>
+        {xpEarned > 0 ? (
+          <div className="mt-4 flex items-center justify-center gap-2 text-accent font-bold">
+            <Zap className="h-5 w-5" />
+            +{xpEarned} XP Earned
+          </div>
+        ) : (
+          <div className="mt-4 flex items-center justify-center gap-2 text-muted-foreground font-bold">
+            <Zap className="h-5 w-5" />
+            Score 40+ to earn XP
+          </div>
+        )}
       </div>
 
       {/* Skills */}
       <div className="rounded-lg border border-border bg-card p-6 space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Performance Breakdown</h2>
-        <SkillBar label="Objection Handling" value={scores.objection_handling_score} />
-        <SkillBar label="Confidence" value={scores.confidence_score} />
-        <SkillBar label="Clarity" value={scores.clarity_score} />
-        <SkillBar label="Closing" value={scores.closing_score} />
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+          {isMeetingSetter ? "Cold Call Breakdown" : "Performance Breakdown"}
+        </h2>
+
+        {isMeetingSetter ? (
+          <>
+            <SkillBar label="Speed to Value" value={scores.speed_to_value_score ?? scores.clarity_score} />
+            <SkillBar label="Clarity of Ask" value={scores.clarity_of_ask_score ?? scores.closing_score} />
+            <SkillBar label="Objection Handling" value={scores.objection_handling_score} />
+            <SkillBar label="Booking Attempt" value={scores.booking_attempt_score ?? scores.closing_score} />
+            <SkillBar label="Confidence" value={scores.confidence_score} />
+          </>
+        ) : (
+          <>
+            <SkillBar label="Objection Handling" value={scores.objection_handling_score} />
+            <SkillBar label="Confidence" value={scores.confidence_score} />
+            <SkillBar label="Clarity" value={scores.clarity_score} />
+            <SkillBar label="Closing" value={scores.closing_score} />
+          </>
+        )}
       </div>
 
       {/* Strengths & Weaknesses */}

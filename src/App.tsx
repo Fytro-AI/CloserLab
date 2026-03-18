@@ -16,6 +16,7 @@ import Breakdown from "./pages/Breakdown";
 import Leaderboard from "./pages/Leaderboard";
 import CallHistory from "./pages/CallHistory";
 import Pricing from "./pages/Pricing";
+import Account from "./pages/Account";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +44,7 @@ function AppRoutes() {
           <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
           <Route path="/history" element={<ProtectedRoute><CallHistory /></ProtectedRoute>} />
           <Route path="/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
+          <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

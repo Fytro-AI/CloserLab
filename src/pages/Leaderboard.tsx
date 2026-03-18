@@ -85,9 +85,9 @@ export default function Leaderboard() {
             }
 
             return (
-              <div key={r.name} className={`flex flex-col items-center gap-1 text-center ${isNext ? "opacity-60" : ""}`}>
-                <span className="text-xl">{isNext ? "❓" : r.icon}</span>
-                <span className="text-xs font-bold text-foreground">{isNext ? "???" : r.name}</span>
+              <div key={r.name} className={`flex flex-col items-center gap-1 text-center ${isNext ? "opacity-40" : ""}`}>
+                <span className="text-xl">{isNext ? r.icon : r.icon}</span>
+                <span className="text-xs font-bold text-foreground">{isNext ? r.name : r.name}</span>
                 <span className="text-[10px] text-muted-foreground">{r.minXP}+ XP</span>
               </div>
             );

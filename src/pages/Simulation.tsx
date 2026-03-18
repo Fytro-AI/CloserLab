@@ -12,6 +12,7 @@ export default function Simulation() {
     persona = "skeptical",
     industry = "saas",
     difficulty = "easy",
+    simulationMode = "discovery",
     prospectName,
     prospectCompany,
     prospectBackstory,
@@ -33,6 +34,7 @@ export default function Simulation() {
     );
   }
 
+  // Voice mode is only available for discovery calls (meeting setter is always text for now)
   if (initialVoiceMode && profile?.subscription_tier === "pro") {
     return (
       <RealtimeCall
@@ -46,7 +48,18 @@ export default function Simulation() {
         customIndustryDescription={customIndustryDescription}
         onEndCall={(transcript) =>
           navigate("/breakdown", {
-            state: { persona, industry, difficulty, duration: 0, transcript, challengeId, challengeName, challengeGoal, challengePassScore },
+            state: {
+              persona,
+              industry,
+              difficulty,
+              duration: 0,
+              transcript,
+              simulationMode,
+              challengeId,
+              challengeName,
+              challengeGoal,
+              challengePassScore,
+            },
           })
         }
       />

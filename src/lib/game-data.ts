@@ -21,6 +21,7 @@ export const INDUSTRIES = [
   { id: "agency", label: "Marketing Agency", icon: "📈", description: "Agency retainers" },
   { id: "coaching", label: "Coaching", icon: "🎯", description: "High-ticket coaching" },
   { id: "plumbing", label: "Plumbing", icon: "🔧", description: "Home services sales" },
+  { id: "healthcare", label: "Healthcare", icon: "🏥", description: "Medical & clinic sales" },
 ] as const;
 
 export const DIFFICULTIES = [
@@ -58,6 +59,7 @@ export function calculateXP(
   difficulty: string,
   streak: number
 ): number {
+  if (baseScore < 40) return 0;
   const diff = DIFFICULTIES.find((d) => d.id === difficulty);
   const multiplier = diff?.xpMultiplier ?? 1;
   let xp = Math.floor(baseScore * 1.5 * multiplier);

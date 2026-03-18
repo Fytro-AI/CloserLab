@@ -51,7 +51,7 @@ export default function Dashboard() {
           <span className="font-semibold text-foreground">{rank.icon} {rank.name}</span>
           {nextRank && (
             <span className="text-muted-foreground">
-              ❓ ???
+              {nextRank.icon} {nextRank.name}
             </span>
           )}
         </div>

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Lock, Zap, AlertCircle, ArrowRight, X, Mic, Crown, Swords, Monitor } from "lucide-react";
+import { Lock, Zap, AlertCircle, ArrowRight, X, Mic, Crown, Swords, Monitor, Target, BookOpen } from "lucide-react";
 import { INDUSTRIES, DIFFICULTIES, PERSONAS } from "@/lib/game-data";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useProfile } from "@/hooks/useProfile";
@@ -65,15 +65,16 @@ export default function Scenarios() {
   const [showProspectCard, setShowProspectCard] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
   const [customIndustry, setCustomIndustry] = useState("");
+  const [simulationMode, setSimulationMode] = useState<"discovery" | "meeting-setter">("discovery");
 
   const userXp = profile?.xp ?? 0;
-  const canStart = industry && difficulty && persona;
+  const canStart = (industry || customIndustry.trim()) && difficulty && persona;
   const canSimulate = canStartSimulation();
   const remaining = remainingSimulations();
 
   const prospect = useMemo(() => {
-    if (!showProspectCard || !persona || !industry) return null;
-    return generateProspect(persona, industry);
+    if (!showProspectCard || !persona) return null;
+    return generateProspect(persona, industry || "saas");
   }, [showProspectCard, persona, industry]);
 
   const personaData = persona ? PERSONAS.find((p) => p.id === persona) : null;
@@ -90,6 +91,7 @@ export default function Scenarios() {
         difficulty,
         persona,
         voiceMode,
+        simulationMode,
         prospectName: prospect ? `${prospect.firstName} ${prospect.lastName}` : undefined,
         prospectCompany: prospect?.company,
         prospectBackstory: prospect?.backstory,
@@ -127,6 +129,54 @@ export default function Scenarios() {
           </div>
         </div>
       )}
+
+      {/* ── SIMULATION MODE ── */}
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Training Mode</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => setSimulationMode("discovery")}
+            className={`rounded-lg border p-4 text-left transition-all card-glow-hover ${
+              simulationMode === "discovery"
+                ? "border-primary bg-primary/10"
+                : "border-border bg-card hover:border-primary/30"
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <BookOpen className="h-4 w-4 text-primary" />
+              <div className="font-semibold text-foreground text-sm">Discovery Call</div>
+            </div>
+            <div className="text-xs text-muted-foreground leading-relaxed">
+              Full conversation. Uncover pain, handle objections, build value.
+            </div>
+          </button>
+          <button
+            onClick={() => setSimulationMode("meeting-setter")}
+            className={`rounded-lg border p-4 text-left transition-all card-glow-hover relative ${
+              simulationMode === "meeting-setter"
+                ? "border-primary bg-primary/10"
+                : "border-border bg-card hover:border-primary/30"
+            }`}
+          >
+            <div className="absolute top-2 right-2 rounded-full bg-accent/10 border border-accent/20 px-2 py-0.5 text-[10px] font-bold text-accent uppercase tracking-wider">
+              New
+            </div>
+            <div className="flex items-center gap-2 mb-1">
+              <Target className="h-4 w-4 text-primary" />
+              <div className="font-semibold text-foreground text-sm">Meeting Setter</div>
+            </div>
+            <div className="text-xs text-muted-foreground leading-relaxed">
+              Busy prospect. One goal: book the next step.
+            </div>
+          </button>
+        </div>
+        {simulationMode === "meeting-setter" && (
+          <div className="rounded-lg border border-primary/15 bg-primary/5 px-4 py-3 text-xs text-muted-foreground leading-relaxed">
+            <span className="text-primary font-semibold">Meeting Setter mode: </span>
+            The prospect picks up cold, and is short on time. Your only goal is to earn a follow-up meeting. Scored on Speed to Value, Clarity of Ask, Objection Handling, and Booking Attempt.
+          </div>
+        )}
+      </div>
 
       {/* Industry */}
       <div className="space-y-3">
@@ -245,7 +295,6 @@ export default function Scenarios() {
                 ? "border-primary bg-primary/10 card-glow"
                 : "border-border bg-card hover:border-primary/30 card-glow-hover"
             }`}
-            //TODO: || isMobile
           >
             {(!profile?.is_pro) && (
               <div className="absolute top-2 right-2 flex items-center gap-1">
@@ -280,7 +329,9 @@ export default function Scenarios() {
           {!canSimulate
             ? "No simulations left — Go Pro"
             : canStart
-            ? "Enter the Arena"
+            ? simulationMode === "meeting-setter"
+              ? "Enter the Arena — Book the Meeting"
+              : "Enter the Arena"
             : "Select all options to begin"}
         </span>
       </button>
@@ -297,13 +348,22 @@ export default function Scenarios() {
             </button>
 
             <div className="text-center space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-widest text-primary">Incoming Call</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+                {simulationMode === "meeting-setter" ? "Cold Call — Book the Meeting" : "Incoming Call"}
+              </p>
               <div className="text-5xl mt-3 mb-2">{personaData.icon}</div>
               <h2 className="text-2xl font-black text-foreground">
                 {prospect.firstName} {prospect.lastName}
               </h2>
               <p className="text-sm text-muted-foreground font-medium">{prospect.company}</p>
             </div>
+
+            {simulationMode === "meeting-setter" && (
+              <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-center">
+                <p className="text-xs font-bold text-primary uppercase tracking-widest mb-1">Your Mission</p>
+                <p className="text-sm text-foreground">Get off this call with a booked meeting. You have 60 seconds.</p>
+              </div>
+            )}
 
             <div className="rounded-lg border border-border bg-secondary/50 p-4">
               <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Intel</p>
@@ -324,7 +384,8 @@ export default function Scenarios() {
               onClick={handleEnterCall}
               className="w-full rounded-lg gradient-primary py-4 text-base font-black uppercase tracking-wider text-primary-foreground hover:opacity-90 transition-all flex items-center justify-center gap-2"
             >
-              <Zap className="h-5 w-5" /> Start Call
+              <Zap className="h-5 w-5" />
+              {simulationMode === "meeting-setter" ? "Start Cold Call" : "Start Call"}
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>
@@ -332,4 +393,4 @@ export default function Scenarios() {
       )}
     </div>
   );
-} 
+}

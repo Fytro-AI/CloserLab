@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Zap, Target, Trophy, CreditCard, History } from "lucide-react";
+import { Zap, Target, Trophy, CreditCard, History, User2Icon } from "lucide-react";
 import { getRank } from "@/lib/game-data";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
@@ -58,7 +58,9 @@ export default function Navbar() {
         <div className="flex items-center gap-2 text-sm">
           <span className="text-accent font-mono font-bold">{xp} XP</span>
           <span className="text-muted-foreground">|</span>
-          <span className="text-foreground font-semibold">{rank.icon} {rank.name}</span>
+          <Link to="/account" className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold text-foreground hover:text-primary transition-colors">
+            <User2Icon className="h-4 w-4" /> Account
+          </Link>
         </div>
       </div>
     </nav>

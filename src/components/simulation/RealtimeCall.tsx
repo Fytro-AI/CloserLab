@@ -17,20 +17,7 @@ interface RealtimeCallProps {
 
 type ConnectionStatus = "connecting" | "connected" | "error" | "ended";
 
-const PERSONA_PROMPTS: Record<string, string> = {
-  skeptical: `You are a NICE BUT SKEPTICAL buyer. You are polite but question everything. Ask for proof, case studies, references. Say things like "I've heard this before" or "Sounds too good to be true". You need to be convinced with concrete evidence. Never be rude, but never be easy either.`,
-  aggressive: `You are an AGGRESSIVE buyer. You interrupt long responses. Challenge every claim. Use phrases like "Cut the fluff", "Get to the point", "That's weak". You are impatient, direct, and slightly hostile. Never make it easy. Push back on EVERYTHING.`,
-  distracted: `You are a DISTRACTED buyer. You are clearly multitasking. Ask "Can you repeat that?" or "Sorry, what?". Mention other things demanding your attention. Give the seller very small windows to make their point.`,
-  budget: `You are a BUDGET-CONSCIOUS buyer. Bring up price within the first 3 exchanges. Mention cash flow, ROI, budget constraints. Push back on price at least twice. Compare to cheaper competitors. Every dollar must be justified.`,
-  "time-starved": `You are a TIME-STARVED buyer. You have 3-5 minutes maximum. Skip pleasantries, demand the bottom line. If the seller rambles, cut them off. Mention meetings or deadlines you're rushing to.`,
-};
-
-const DIFFICULTY_PROMPTS: Record<string, string> = {
-  easy: "Be somewhat receptive. Give the seller openings. Occasionally show interest.",
-  medium: "Be moderately challenging. Give some openings but make them work for it.",
-  hard: "Be very difficult. Rarely show interest. Make them fight for every inch.",
-  nightmare: "Be nearly impossible. Shut down almost everything. Only the most elite pitch would move you.",
-};
+const HANGUP_PHRASE = "ending the call now";
 
 export default function RealtimeCall({
   persona,
@@ -51,14 +38,14 @@ export default function RealtimeCall({
   const [isUserSpeaking, setIsUserSpeaking] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [hangingUp, setHangingUp] = useState(false);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dcRef = useRef<RTCDataChannel | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const currentAssistantRef = useRef<string>("");
-
-  // ── KEY GUARD: only allow response.create after user has actually spoken ──
+  const callEndedRef = useRef(false);
   const userHasSpokenRef = useRef(false);
 
   const [elapsed, setElapsed] = useState(0);
@@ -70,20 +57,38 @@ export default function RealtimeCall({
   }, [status]);
 
   useEffect(() => {
-    if (elapsed >= 600) {
-      handleEndCall();
-    }
+    if (elapsed >= 600) handleEndCall();
   }, [elapsed]);
 
   const formatTime = (s: number) =>
     `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
+
+  const cleanup = useCallback(() => {
+    dcRef.current?.close();
+    pcRef.current?.close();
+    localStreamRef.current?.getTracks().forEach((t) => t.stop());
+    if (audioRef.current) audioRef.current.srcObject = null;
+  }, []);
+
+  const handleEndCall = useCallback(async (transcriptOverride?: typeof transcript) => {
+    if (callEndedRef.current) return;
+    callEndedRef.current = true;
+    cleanup();
+    setStatus("ended");
+
+    const finalTranscript = transcriptOverride ?? transcript;
+    const minutesUsed = Math.ceil(elapsed / 60);
+    if (minutesUsed > 0) {
+      await supabase.functions.invoke("track-voice-usage", { body: { minutesUsed } });
+    }
+    onEndCall(finalTranscript);
+  }, [cleanup, elapsed, onEndCall, transcript]);
 
   const handleDataChannelMessage = useCallback((event: MessageEvent) => {
     try {
       const msg = JSON.parse(event.data);
 
       switch (msg.type) {
-
         case "response.audio.delta":
           setIsSpeaking(true);
           break;
@@ -96,15 +101,29 @@ export default function RealtimeCall({
           currentAssistantRef.current += msg.delta || "";
           break;
 
-        case "response.audio_transcript.done":
-          if (currentAssistantRef.current.trim()) {
-            setTranscript((prev) => [
-              ...prev,
-              { role: "assistant", content: currentAssistantRef.current.trim() },
-            ]);
-          }
+        case "response.audio_transcript.done": {
+          const text = currentAssistantRef.current.trim();
           currentAssistantRef.current = "";
+
+          if (!text) break;
+
+          // Strip the hangup signal from the displayed transcript
+          const displayText = text.replace(new RegExp(HANGUP_PHRASE, "gi"), "").trim();
+
+          setTranscript((prev) => {
+            const updated = [...prev, { role: "assistant" as const, content: displayText }];
+
+            // Detect hang-up phrase in what the AI said
+            if (text.toLowerCase().includes(HANGUP_PHRASE) && !callEndedRef.current) {
+              setHangingUp(true);
+              // Give the audio a moment to finish before ending
+              setTimeout(() => handleEndCall(updated), 2200);
+            }
+
+            return updated;
+          });
           break;
+        }
 
         case "conversation.item.input_audio_transcription.completed":
           if (msg.transcript?.trim()) {
@@ -137,42 +156,28 @@ export default function RealtimeCall({
     } catch (e) {
       console.error("DC message parse error:", e);
     }
-  }, []);
-
-  const cleanup = useCallback(() => {
-    dcRef.current?.close();
-    pcRef.current?.close();
-    localStreamRef.current?.getTracks().forEach((t) => t.stop());
-    if (audioRef.current) {
-      audioRef.current.srcObject = null;
-    }
-  }, []);
+  }, [handleEndCall]);
 
   const connect = useCallback(async () => {
     try {
       setStatus("connecting");
       setErrorMsg(null);
+      callEndedRef.current = false;
       userHasSpokenRef.current = false;
 
       const tokenResp = await supabase.functions.invoke("realtime-token", {
-      body: {
-        persona,
-        industry,
-        difficulty,
-        prospectName,
-        prospectCompany,
-        prospectBackstory,
-        challengeSystemPrompt,
-        customIndustryDescription,
-      },
-    });
+        body: {
+          persona, industry, difficulty,
+          prospectName, prospectCompany, prospectBackstory,
+          challengeSystemPrompt, customIndustryDescription,
+        },
+      });
 
       if (tokenResp.error || !tokenResp.data?.client_secret) {
         throw new Error(tokenResp.data?.error || "Failed to get voice session token");
       }
 
       const ephemeralKey = tokenResp.data.client_secret.value;
-
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       localStreamRef.current = stream;
 
@@ -182,9 +187,7 @@ export default function RealtimeCall({
       const audioEl = document.createElement("audio");
       audioEl.autoplay = true;
       audioRef.current = audioEl;
-      pc.ontrack = (e) => {
-        audioEl.srcObject = e.streams[0];
-      };
+      pc.ontrack = (e) => { audioEl.srcObject = e.streams[0]; };
 
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
@@ -193,7 +196,6 @@ export default function RealtimeCall({
       dc.onmessage = handleDataChannelMessage;
       dc.onopen = () => {
         setStatus("connected");
-        
         if (dcRef.current?.readyState === "open") {
           dcRef.current.send(JSON.stringify({
             type: "conversation.item.create",
@@ -222,9 +224,7 @@ export default function RealtimeCall({
         }
       );
 
-      if (!sdpResp.ok) {
-        throw new Error("WebRTC negotiation failed");
-      }
+      if (!sdpResp.ok) throw new Error("WebRTC negotiation failed");
 
       const answerSdp = await sdpResp.text();
       await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
@@ -235,7 +235,6 @@ export default function RealtimeCall({
           setErrorMsg("Connection lost. Please try again.");
         }
       };
-
     } catch (e: any) {
       console.error("Realtime connect error:", e);
       setStatus("error");
@@ -257,36 +256,16 @@ export default function RealtimeCall({
     }
   };
 
-  const handleEndCall = async () => {
-    cleanup();
-    setStatus("ended");
-
-    const minutesUsed = Math.ceil(elapsed / 60);
-    if (minutesUsed > 0) {
-      await supabase.functions.invoke("track-voice-usage", {
-        body: { minutesUsed },
-      });
-    }
-
-    onEndCall(transcript);
-  };
-
   if (status === "error") {
     return (
       <div className="fixed inset-0 bg-background flex flex-col items-center justify-center gap-6 px-4">
         <div className="text-4xl">📵</div>
         <p className="text-foreground font-bold text-lg text-center">Call Failed</p>
         <p className="text-muted-foreground text-sm text-center max-w-xs">{errorMsg}</p>
-        <button
-          onClick={connect}
-          className="rounded-lg gradient-primary px-6 py-3 font-bold text-primary-foreground"
-        >
+        <button onClick={connect} className="rounded-lg gradient-primary px-6 py-3 font-bold text-primary-foreground">
           Try Again
         </button>
-        <button
-          onClick={() => onEndCall(transcript)}
-          className="text-sm text-muted-foreground underline"
-        >
+        <button onClick={() => onEndCall(transcript)} className="text-sm text-muted-foreground underline">
           End Call
         </button>
       </div>
@@ -300,6 +279,15 @@ export default function RealtimeCall({
         <div className="absolute inset-0 bg-background/90 flex flex-col items-center justify-center gap-4 z-10">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-foreground font-semibold">Connecting call...</p>
+        </div>
+      )}
+
+      {/* Hanging up overlay */}
+      {hangingUp && (
+        <div className="absolute inset-0 bg-background/90 flex flex-col items-center justify-center gap-4 z-10 animate-fade-in">
+          <div className="text-4xl">📵</div>
+          <p className="text-foreground font-bold text-lg">They hung up.</p>
+          <p className="text-muted-foreground text-sm">Heading to your breakdown...</p>
         </div>
       )}
 
@@ -380,15 +368,12 @@ export default function RealtimeCall({
               border: `1px solid ${isMuted ? "rgba(239,68,68,0.5)" : "rgba(132,204,22,0.4)"}`,
             }}
           >
-            {isMuted
-              ? <MicOff className="h-5 w-5 text-destructive" />
-              : <Mic className="h-5 w-5 text-primary" />
-            }
+            {isMuted ? <MicOff className="h-5 w-5 text-destructive" /> : <Mic className="h-5 w-5 text-primary" />}
           </div>
           <span className="text-xs text-muted-foreground">{isMuted ? "Unmute" : "Mute"}</span>
         </button>
 
-        <button onClick={handleEndCall} className="flex flex-col items-center gap-1">
+        <button onClick={() => handleEndCall()} className="flex flex-col items-center gap-1">
           <div className="flex items-center justify-center rounded-full w-16 h-16 bg-destructive transition-all hover:opacity-90">
             <PhoneOff className="h-6 w-6 text-white" />
           </div>

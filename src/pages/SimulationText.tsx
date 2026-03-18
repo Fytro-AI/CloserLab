@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { PhoneOff, Send, Clock, X } from "lucide-react";
+import { PhoneOff, Send, Clock, X, Target } from "lucide-react";
 import { PERSONAS } from "@/lib/game-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useVoiceMode } from "@/hooks/useVoiceMode";
@@ -19,6 +19,7 @@ export default function SimulationText() {
     industry = "saas",
     difficulty = "easy",
     voiceMode: initialVoiceMode = false,
+    simulationMode = "discovery",
     prospectName,
     prospectCompany,
     prospectBackstory,
@@ -29,6 +30,8 @@ export default function SimulationText() {
     challengeSystemPrompt,
     customIndustryDescription,
   } = (location.state as any) || {};
+
+  const isMeetingSetter = simulationMode === "meeting-setter";
   const personaData = PERSONAS.find((p) => p.id === persona) || PERSONAS[0];
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -105,15 +108,22 @@ export default function SimulationText() {
     return { display, tip };
   };
 
+  // Route to the correct edge function based on simulationMode
+  const getChatUrl = () => {
+    const base = import.meta.env.VITE_SUPABASE_URL;
+    return isMeetingSetter
+      ? `${base}/functions/v1/simulation-chat-meeting-setter`
+      : `${base}/functions/v1/simulation-chat`;
+  };
+
   const streamAIResponse = async (conversationHistory: Message[]): Promise<boolean> => {
-    const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/simulation-chat`;
     let aiEndedCall = false;
 
     const { data: { session } } = await supabase.auth.getSession();
     const accessToken = session?.access_token;
 
     try {
-      const resp = await fetch(CHAT_URL, {
+      const resp = await fetch(getChatUrl(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -127,8 +137,9 @@ export default function SimulationText() {
           prospectName,
           prospectCompany,
           prospectBackstory,
-          challengeSystemPrompt,
+          ...(isMeetingSetter ? {} : { challengeSystemPrompt }), // challenge prompts only for discovery
           customIndustryDescription,
+          simulationMode,
         }),
       });
 
@@ -205,16 +216,31 @@ export default function SimulationText() {
     return aiEndedCall;
   };
 
-  const sendFromMessages = async (updated: Message[]) => {
+  const sendFromMessages = async (conversationHistory: Message[]) => {
     setIsTyping(true);
-    setTipVisible(false);
-    setTipOpen(false);
-    if (voiceEnabled) voice.stopListening();
-    const aiEnded = await streamAIResponse(updated);
-    setIsTyping(false);
-    if (aiEnded) {
-      callEndedRef.current = true;
-      setTimeout(() => endCall(), 2000);
+    try {
+      const aiEnded = await streamAIResponse(conversationHistory);
+      if (aiEnded && !callEndedRef.current) {
+        callEndedRef.current = true;
+        setTimeout(() => {
+          navigate("/breakdown", {
+            state: {
+              persona,
+              industry,
+              difficulty,
+              duration: elapsed,
+              transcript: conversationHistory,
+              simulationMode,
+              challengeId,
+              challengeName,
+              challengeGoal,
+              challengePassScore,
+            },
+          });
+        }, 1800);
+      }
+    } finally {
+      setIsTyping(false);
     }
   };
 
@@ -231,13 +257,24 @@ export default function SimulationText() {
     voice.stopSpeaking();
     voice.stopListening();
     navigate("/breakdown", {
-      state: { persona, industry, difficulty, duration: elapsed, transcript: messages, challengeId, challengeName, challengeGoal, challengePassScore },
+      state: {
+        persona,
+        industry,
+        difficulty,
+        duration: elapsed,
+        transcript: messages,
+        simulationMode,
+        challengeId,
+        challengeName,
+        challengeGoal,
+        challengePassScore,
+      },
     });
   };
 
   const lastAIMessage = [...messages].reverse().find(m => m.role === "assistant")?.content || "";
 
-  // TTS voice path (non-pro)
+  // TTS voice path
   if (voiceEnabled) {
     return (
       <CallScreen
@@ -273,8 +310,18 @@ export default function SimulationText() {
 
       <div className="container mx-auto flex h-[calc(100vh-3.5rem)] max-w-2xl flex-col px-4 py-4">
 
+        {/* Meeting Setter banner */}
+        {isMeetingSetter && (
+          <div className="rounded-t-lg border border-b-0 border-primary/30 bg-primary/5 px-3 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
+              <Target className="h-3.5 w-3.5" /> Meeting Setter
+            </div>
+            <div className="text-xs text-muted-foreground">Goal: Book the follow-up meeting</div>
+          </div>
+        )}
+
         {/* Challenge banner */}
-        {challengeId && (
+        {challengeId && !isMeetingSetter && (
           <div className="rounded-t-lg border border-b-0 border-accent/30 bg-accent/10 px-3 py-2 flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-accent">
               🎯 {challengeName}
@@ -284,12 +331,15 @@ export default function SimulationText() {
         )}
 
         {/* Header */}
-        <div className={`flex items-center justify-between border border-border bg-card p-3 ${challengeId ? "" : "rounded-t-lg"}`}>
+        <div className={`flex items-center justify-between border border-border bg-card p-3 ${(isMeetingSetter || challengeId) ? "" : "rounded-t-lg"}`}>
           <div className="flex items-center gap-2">
             <span className="text-xl">{personaData.icon}</span>
             <div>
               <div className="text-sm font-bold text-foreground">{prospectName || personaData.label}</div>
-              <div className="text-xs text-muted-foreground">{prospectCompany || "Prospect"} • Active Call</div>
+              <div className="text-xs text-muted-foreground">
+                {prospectCompany || "Prospect"} •{" "}
+                {isMeetingSetter ? "Cold Call" : "Active Call"}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -303,6 +353,15 @@ export default function SimulationText() {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto border-x border-border bg-background p-4 space-y-3">
+          {messages.length === 0 && (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-xs text-muted-foreground text-center max-w-xs">
+                {isMeetingSetter
+                  ? "They just picked up. You called them cold. Go."
+                  : "The call has started. Make your opening move."}
+              </p>
+            </div>
+          )}
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[80%] rounded-lg px-4 py-2.5 text-sm ${
@@ -330,7 +389,7 @@ export default function SimulationText() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            placeholder="Type your pitch..."
+            placeholder={isMeetingSetter ? "Say your opener..." : "Type your pitch..."}
             disabled={isTyping}
             className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
           />
