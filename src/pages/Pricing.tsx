@@ -14,8 +14,8 @@ const PLANS = [
   {
     id: "free",
     name: "Free",
-    monthlyPrice: "$0",
-    yearlyPrice: "$0",
+    monthlyPrice: "€0",
+    yearlyPrice: "€0",
     period: "forever",
     description: "Dip your toes in. See if you've got what it takes.",
     features: [
@@ -32,8 +32,8 @@ const PLANS = [
   {
     id: "starter",
     name: "Starter",
-    monthlyPrice: "$14.99",
-    yearlyPrice: "$125",
+    monthlyPrice: "€14.99",
+    yearlyPrice: "€125",
     period: "/month",
     description: "Unlimited text reps. Build the habit.",
     features: [
@@ -52,8 +52,8 @@ const PLANS = [
   {
     id: "pro",
     name: "Pro",
-    monthlyPrice: "$29.99",
-    yearlyPrice: "$251",
+    monthlyPrice: "€29.99",
+    yearlyPrice: "€251",
     period: "/month",
     description: "Real-time AI voice calls. Train like it's the real thing.",
     features: [

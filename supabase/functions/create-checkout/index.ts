@@ -58,11 +58,22 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
+    const isProMonthly = priceId === "price_1T9rx3PNpQaZotKHzAmrOT3F";
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
+      subscription_data: isProMonthly ? {
+        trial_period_days: 1,
+        trial_settings: {
+          end_behavior: {
+            missing_payment_method: "cancel",
+          },
+        },
+      } : undefined,
+      payment_method_collection: isProMonthly ? "if_required" : "always",
       success_url: `${req.headers.get("origin")}/?checkout=success`,
       cancel_url: `${req.headers.get("origin")}/pricing`,
     });

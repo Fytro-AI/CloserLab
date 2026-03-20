@@ -263,7 +263,7 @@ function PricingSection() {
   const plans = [
     {
       name: "Free",
-      price: "$0",
+      price: "€0",
       period: "forever",
       features: [
         "3 practice calls total",
@@ -276,7 +276,7 @@ function PricingSection() {
     },
     {
       name: "Starter",
-      price: "$14.99",
+      price: "€14.99",
       period: "/month",
       features: [
         "Unlimited text simulations",
@@ -291,7 +291,7 @@ function PricingSection() {
     },
     {
       name: "Pro",
-      price: "$29.99",
+      price: "€29.99",
       period: "/month",
       features: [
         "Everything in Starter",
