@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
-import { ArrowRight, CheckCircle, XCircle, TrendingUp, Zap, Loader2, Trophy, X, Target, Briefcase } from "lucide-react";
+import { ArrowRight, CheckCircle, XCircle, TrendingUp, Zap, Loader2, Trophy, X, Target } from "lucide-react";
 import SkillBar from "@/components/SkillBar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,16 +14,11 @@ interface Scores {
   objection_handling_score: number;
   clarity_score: number;
   closing_score: number;
-  // Meeting Setter
+  // Meeting Setter specific
   speed_to_value_score?: number;
   clarity_of_ask_score?: number;
   booking_attempt_score?: number;
   meeting_booked?: boolean;
-  // Interview
-  communication_score?: number;
-  sales_knowledge_score?: number;
-  self_awareness_score?: number;
-  interview_passed?: boolean;
   strengths: string[];
   weaknesses: string[];
   missed_opportunities: string[];
@@ -48,12 +43,9 @@ export default function Breakdown() {
     challengeName,
     challengeGoal,
     challengePassScore,
-    interviewRole,
-    interviewCompany,
   } = state;
 
   const isMeetingSetter = simulationMode === "meeting-setter";
-  const isInterview = simulationMode === "interview";
 
   const [scores, setScores] = useState<Scores | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,20 +89,16 @@ export default function Breakdown() {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({
-            transcript,
-            industry,
-            difficulty,
-            persona,
-            simulationMode,
-            interviewRole,
-            interviewCompany,
-          }),
+          body: JSON.stringify({ transcript, industry, difficulty, persona, simulationMode }),
         }
       );
 
       const data = await resp.json();
-      if (!resp.ok) throw new Error(data?.error || "Failed to score call");
+
+      if (!resp.ok) {
+        throw new Error(data?.error || "Failed to score call");
+      }
+
       setScores(data as Scores);
     } catch (e: any) {
       console.error("Scoring error:", e);
@@ -162,8 +150,12 @@ export default function Breakdown() {
     if (weekStart) {
       const ws = new Date(weekStart);
       const daysSince = Math.floor((now.getTime() - ws.getTime()) / (1000 * 60 * 60 * 24));
-      if (daysSince >= 7) { weeklyCount = 1; weekStart = today; }
-      else { weeklyCount += 1; }
+      if (daysSince >= 7) {
+        weeklyCount = 1;
+        weekStart = today;
+      } else {
+        weeklyCount += 1;
+      }
     } else {
       weeklyCount = 1;
       weekStart = today;
@@ -194,10 +186,10 @@ export default function Breakdown() {
         <Loader2 className="h-8 w-8 text-primary animate-spin" />
         <div className="text-center">
           <h2 className="text-xl font-bold text-foreground">
-            {isInterview ? "Scoring your interview..." : isMeetingSetter ? "Scoring your cold call..." : "Analyzing your call..."}
+            {isMeetingSetter ? "Scoring your cold call..." : "Analyzing your call..."}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            {isInterview ? "How did you do?" : isMeetingSetter ? "Did you earn the meeting?" : "Our AI coach is reviewing every word."}
+            {isMeetingSetter ? "Did you earn the meeting?" : "Our AI coach is reviewing every word."}
           </p>
         </div>
       </div>
@@ -210,10 +202,18 @@ export default function Breakdown() {
       <div className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center gap-4 px-4">
         <div className="text-4xl">{isNoSpeech ? "🎤" : "😅"}</div>
         <div className="text-center space-y-2">
-          <h2 className="text-xl font-bold text-foreground">{isNoSpeech ? "We didn't hear anything" : "Scoring failed"}</h2>
-          <p className="text-sm text-muted-foreground">{isNoSpeech ? "Make sure your mic is working and try speaking during the call." : error || "Could not analyze the call."}</p>
+          <h2 className="text-xl font-bold text-foreground">
+            {isNoSpeech ? "We didn't hear anything" : "Scoring failed"}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {isNoSpeech
+              ? "Make sure your mic is working and try speaking during the call."
+              : error || "Could not analyze the call."}
+          </p>
         </div>
-        <Link to="/scenarios" className="text-primary font-semibold hover:underline">Try again</Link>
+        <Link to="/scenarios" className="text-primary font-semibold hover:underline">
+          Try again
+        </Link>
       </div>
     );
   }
@@ -222,55 +222,62 @@ export default function Breakdown() {
     <div className="container mx-auto max-w-2xl px-4 py-8 space-y-6 animate-slide-up">
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-black text-foreground">
-          {isInterview ? "Interview Complete." : isMeetingSetter ? "Cold Call Complete." : "Call Complete."}
+          {isMeetingSetter ? "Cold Call Complete." : "Call Complete."}
         </h1>
         <p className="text-muted-foreground">
-          {isInterview ? `${interviewRole} interview at ${interviewCompany}.` : isMeetingSetter ? "Here's how you did on the cold call." : "Here's your debrief, soldier."}
+          {isMeetingSetter ? "Here's how you did on the cold call." : "Here's your debrief, soldier."}
         </p>
       </div>
 
-      {/* Interview result banner */}
-      {isInterview && (
-        <div className={`rounded-lg border p-5 text-center ${scores.interview_passed ? "border-success/30 bg-success/10" : "border-destructive/30 bg-destructive/10"}`}>
-          <div className="flex items-center justify-center gap-2 mb-1">
-            {scores.interview_passed ? <Briefcase className="h-6 w-6 text-success" /> : <X className="h-6 w-6 text-destructive" />}
-            <span className={`text-lg font-black uppercase tracking-wider ${scores.interview_passed ? "text-success" : "text-destructive"}`}>
-              {scores.interview_passed ? "Would Move to Next Round 🎉" : "Didn't Pass This Round"}
-            </span>
-          </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            {scores.interview_passed
-              ? "Strong performance. Study the feedback to nail the next round too."
-              : "Review the weaknesses below. Every interview is practice for the real one."}
-          </p>
-        </div>
-      )}
-
       {/* Meeting Setter result banner */}
       {isMeetingSetter && (
-        <div className={`rounded-lg border p-5 text-center ${scores.meeting_booked ? "border-success/30 bg-success/10" : "border-destructive/30 bg-destructive/10"}`}>
+        <div className={`rounded-lg border p-5 text-center ${
+          scores.meeting_booked
+            ? "border-success/30 bg-success/10"
+            : "border-destructive/30 bg-destructive/10"
+        }`}>
           <div className="flex items-center justify-center gap-2 mb-1">
-            {scores.meeting_booked ? <Target className="h-6 w-6 text-success" /> : <X className="h-6 w-6 text-destructive" />}
-            <span className={`text-lg font-black uppercase tracking-wider ${scores.meeting_booked ? "text-success" : "text-destructive"}`}>
+            {scores.meeting_booked ? (
+              <Target className="h-6 w-6 text-success" />
+            ) : (
+              <X className="h-6 w-6 text-destructive" />
+            )}
+            <span className={`text-lg font-black uppercase tracking-wider ${
+              scores.meeting_booked ? "text-success" : "text-destructive"
+            }`}>
               {scores.meeting_booked ? "Meeting Booked 🎯" : "No Meeting Booked"}
             </span>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            {scores.meeting_booked ? "You earned the follow-up. That's the whole game." : "The prospect didn't commit. Review the feedback below."}
+            {scores.meeting_booked
+              ? "You earned the follow-up. That's the whole game."
+              : "The prospect didn't commit. Review the feedback below."}
           </p>
         </div>
       )}
 
       {/* Challenge Result Banner */}
-      {challengeId && !isMeetingSetter && !isInterview && (
-        <div className={`rounded-lg border p-5 text-center ${scores.overall_score >= (challengePassScore || 70) ? "border-success/30 bg-success/10" : "border-destructive/30 bg-destructive/10"}`}>
+      {challengeId && !isMeetingSetter && (
+        <div className={`rounded-lg border p-5 text-center ${
+          scores.overall_score >= (challengePassScore || 70)
+            ? "border-success/30 bg-success/10"
+            : "border-destructive/30 bg-destructive/10"
+        }`}>
           <div className="flex items-center justify-center gap-2 mb-1">
-            {scores.overall_score >= (challengePassScore || 70) ? <Trophy className="h-6 w-6 text-success" /> : <X className="h-6 w-6 text-destructive" />}
-            <span className={`text-lg font-black uppercase tracking-wider ${scores.overall_score >= (challengePassScore || 70) ? "text-success" : "text-destructive"}`}>
+            {scores.overall_score >= (challengePassScore || 70) ? (
+              <Trophy className="h-6 w-6 text-success" />
+            ) : (
+              <X className="h-6 w-6 text-destructive" />
+            )}
+            <span className={`text-lg font-black uppercase tracking-wider ${
+              scores.overall_score >= (challengePassScore || 70) ? "text-success" : "text-destructive"
+            }`}>
               {scores.overall_score >= (challengePassScore || 70) ? "Challenge Passed" : "Challenge Failed"}
             </span>
           </div>
-          <p className="text-sm text-muted-foreground">{challengeName} — Need {challengePassScore}+ to pass</p>
+          <p className="text-sm text-muted-foreground">
+            {challengeName} — Need {challengePassScore}+ to pass
+          </p>
         </div>
       )}
 
@@ -280,11 +287,13 @@ export default function Breakdown() {
         <p className="text-sm text-muted-foreground uppercase tracking-widest">Overall Score</p>
         {xpEarned > 0 ? (
           <div className="mt-4 flex items-center justify-center gap-2 text-accent font-bold">
-            <Zap className="h-5 w-5" />+{xpEarned} XP Earned
+            <Zap className="h-5 w-5" />
+            +{xpEarned} XP Earned
           </div>
         ) : (
           <div className="mt-4 flex items-center justify-center gap-2 text-muted-foreground font-bold">
-            <Zap className="h-5 w-5" />Score 40+ to earn XP
+            <Zap className="h-5 w-5" />
+            Score 40+ to earn XP
           </div>
         )}
       </div>
@@ -292,18 +301,10 @@ export default function Breakdown() {
       {/* Skills */}
       <div className="rounded-lg border border-border bg-card p-6 space-y-4">
         <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-          {isInterview ? "Interview Breakdown" : isMeetingSetter ? "Cold Call Breakdown" : "Performance Breakdown"}
+          {isMeetingSetter ? "Cold Call Breakdown" : "Performance Breakdown"}
         </h2>
 
-        {isInterview ? (
-          <>
-            <SkillBar label="Communication" value={scores.communication_score ?? scores.clarity_score} />
-            <SkillBar label="Sales Knowledge" value={scores.sales_knowledge_score ?? scores.closing_score} />
-            <SkillBar label="Confidence" value={scores.confidence_score} />
-            <SkillBar label="Self-Awareness" value={scores.self_awareness_score ?? scores.objection_handling_score} />
-            <SkillBar label="Closing the Interview" value={scores.closing_score} />
-          </>
-        ) : isMeetingSetter ? (
+        {isMeetingSetter ? (
           <>
             <SkillBar label="Speed to Value" value={scores.speed_to_value_score ?? scores.clarity_score} />
             <SkillBar label="Clarity of Ask" value={scores.clarity_of_ask_score ?? scores.closing_score} />
@@ -328,7 +329,9 @@ export default function Breakdown() {
             <CheckCircle className="h-4 w-4" /> Strengths
           </h3>
           <ul className="space-y-2">
-            {scores.strengths.map((s, i) => <li key={i} className="text-sm text-foreground">• {s}</li>)}
+            {scores.strengths.map((s, i) => (
+              <li key={i} className="text-sm text-foreground">• {s}</li>
+            ))}
           </ul>
         </div>
         <div className="rounded-lg border border-border bg-card p-5 space-y-3">
@@ -336,7 +339,9 @@ export default function Breakdown() {
             <XCircle className="h-4 w-4" /> Weaknesses
           </h3>
           <ul className="space-y-2">
-            {scores.weaknesses.map((w, i) => <li key={i} className="text-sm text-foreground">• {w}</li>)}
+            {scores.weaknesses.map((w, i) => (
+              <li key={i} className="text-sm text-foreground">• {w}</li>
+            ))}
           </ul>
         </div>
       </div>
@@ -344,13 +349,15 @@ export default function Breakdown() {
       {/* Improvement Tip */}
       <div className="rounded-lg border border-primary/20 bg-primary/5 p-5 space-y-3">
         <h3 className="flex items-center gap-2 font-bold text-primary text-sm uppercase tracking-widest">
-          <TrendingUp className="h-4 w-4" /> {isInterview ? "Interview Coach's Verdict" : "Coach's Verdict"}
+          <TrendingUp className="h-4 w-4" /> Coach's Verdict
         </h3>
         <p className="text-sm text-foreground leading-relaxed font-semibold">{scores.improvement_tip}</p>
         {scores.missed_opportunities.length > 0 && (
           <div className="mt-3 space-y-1">
             <p className="text-xs text-muted-foreground uppercase tracking-widest">Missed Opportunities</p>
-            {scores.missed_opportunities.map((m, i) => <p key={i} className="text-sm text-foreground">• {m}</p>)}
+            {scores.missed_opportunities.map((m, i) => (
+              <p key={i} className="text-sm text-foreground">• {m}</p>
+            ))}
           </div>
         )}
       </div>
@@ -361,7 +368,7 @@ export default function Breakdown() {
           to={challengeId ? "/challenges" : "/scenarios"}
           className="flex-1 flex items-center justify-center gap-2 rounded-lg gradient-primary py-3 font-bold text-primary-foreground hover:opacity-90 transition-opacity"
         >
-          {challengeId ? "Back to Challenges" : isInterview ? "Practice Again" : "Train Again"} <ArrowRight className="h-4 w-4" />
+          {challengeId ? "Back to Challenges" : "Train Again"} <ArrowRight className="h-4 w-4" />
         </Link>
         <Link
           to="/"
