@@ -1,68 +1,143 @@
 import { Link, useLocation } from "react-router-dom";
-import { Zap, Target, Trophy, CreditCard, History, User2Icon } from "lucide-react";
+import { useState } from "react";
+import {
+  Zap, Target, Trophy, CreditCard, History,
+  User2Icon, Phone, Building2, ChevronLeft, ChevronRight,
+} from "lucide-react";
 import { getRank } from "@/lib/game-data";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
 
-const NAV_ITEMS = [
-  { path: "/", label: "Dashboard", icon: Target },
-  { path: "/scenarios", label: "Train", icon: Zap },
-  { path: "/history", label: "History", icon: History },
-  { path: "/leaderboard", label: "Ranks", icon: Trophy },
-  { path: "/pricing", label: "Pro", icon: CreditCard },
-];
+const SIDEBAR_WIDTH = 220;
+const SIDEBAR_COLLAPSED_WIDTH = 56;
+
+interface NavItem {
+  path: string;
+  label: string;
+  icon: React.ElementType;
+  soon?: boolean;
+}
 
 export default function Navbar() {
   const location = useLocation();
   const { user } = useAuth();
   const { profile } = useProfile();
+  const [collapsed, setCollapsed] = useState(false);
 
-  // Hide navbar on landing page and when not authenticated
   if (!user || location.pathname === "/landing") return null;
 
   const xp = profile?.xp ?? 0;
   const rank = getRank(xp);
 
-  return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
-      <div className="container mx-auto flex h-14 items-center justify-between px-4">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md gradient-primary">
-            <Zap className="h-4 w-4 text-primary-foreground" />
-          </div>
-          <span className="text-lg font-black tracking-tight text-foreground">
-            CLOSER<span className="text-primary">LAB</span>
-          </span>
-        </Link>
+  const NAV_ITEMS: NavItem[] = [
+    { path: "/",            label: "Dashboard",  icon: Target },
+    { path: "/scenarios",   label: "Train",      icon: Zap },
+    { path: "/history",     label: "History",    icon: History },
+    { path: "/leaderboard", label: "Ranks",      icon: Trophy },
+    { path: "/pricing",     label: "Pro",        icon: CreditCard },
+    { path: "/company",     label: "My Company", icon: Building2 },
+    { path: "/coming-soon", label: "Live Call",  icon: Phone, soon: true },
+  ];
 
-        <div className="flex items-center gap-1">
-          {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
-            const active = location.pathname === path;
+  const w = collapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH;
+
+  return (
+    <>
+      <aside
+        className="fixed top-0 left-0 bottom-0 z-50 flex flex-col border-r border-border bg-background/95 backdrop-blur-xl transition-all duration-200"
+        style={{ width: w }}
+      >
+        {/* Logo */}
+        <div className="flex items-center h-14 px-4 border-b border-border flex-shrink-0">
+          {!collapsed ? (
+            <Link to="/" className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md gradient-primary flex-shrink-0">
+                <Zap className="h-4 w-4 text-primary-foreground" />
+              </div>
+              <span className="text-lg font-black tracking-tight text-foreground truncate">
+                CLOSER<span className="text-primary">LAB</span>
+              </span>
+            </Link>
+          ) : (
+            <Link to="/" className="flex items-center justify-center w-full">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md gradient-primary">
+                <Zap className="h-4 w-4 text-primary-foreground" />
+              </div>
+            </Link>
+          )}
+        </div>
+
+        {/* Nav items */}
+        <nav className="flex-1 overflow-y-auto py-3 space-y-0.5 px-2">
+          {NAV_ITEMS.map(({ path, label, icon: Icon, soon }) => {
+            const active = !soon && location.pathname === path;
             return (
               <Link
-                key={path}
+                key={`${path}-${label}`}
                 to={path}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                title={collapsed ? label : undefined}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                   active
                     ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground"
+                    : soon
+                    ? "text-muted-foreground/50 hover:bg-secondary/30 hover:text-muted-foreground"
+                    : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
                 }`}
               >
-                <Icon className="h-4 w-4" />
-                <span className="hidden sm:inline">{label}</span>
+                <Icon className="h-4 w-4 flex-shrink-0" />
+                {!collapsed && (
+                  <>
+                    <span className="truncate flex-1">{label}</span>
+                    {soon && (
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/40 border border-muted-foreground/20 rounded px-1 py-0.5 flex-shrink-0">
+                        Soon
+                      </span>
+                    )}
+                  </>
+                )}
               </Link>
             );
           })}
-        </div>
+        </nav>
 
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-accent font-mono font-bold">{xp} XP</span>
-          <span className="text-muted-foreground">|</span>
-          <Link to="/account" className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold text-foreground hover:text-primary transition-colors">
-            <User2Icon className="h-4 w-4" /> Account
-          </Link>
+        {/* User card */}
+        <div className="flex-shrink-0 border-t border-border p-3 space-y-2">
+          {!collapsed ? (
+            <Link
+              to="/account"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-secondary/50 transition-colors"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary flex-shrink-0 text-base">
+                {rank.icon}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-foreground truncate">{profile?.name ?? "Closer"}</p>
+                <p className="text-xs text-muted-foreground font-mono">{xp.toLocaleString()} XP · {rank.name}</p>
+              </div>
+              <User2Icon className="h-3.5 w-3.5 text-muted-foreground/50 flex-shrink-0" />
+            </Link>
+          ) : (
+            <Link to="/account" title="Account" className="flex items-center justify-center w-full py-1 rounded-lg hover:bg-secondary/50 transition-colors">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-base">
+                {rank.icon}
+              </div>
+            </Link>
+          )}
+
+          <button
+            onClick={() => setCollapsed((c) => !c)}
+            className="flex items-center justify-center w-full rounded-lg py-1.5 text-muted-foreground/40 hover:text-muted-foreground hover:bg-secondary/50 transition-colors"
+          >
+            {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
+          </button>
         </div>
-      </div>
-    </nav>
+      </aside>
+
+      {/* Spacer */}
+      <div className="flex-shrink-0 transition-all duration-200" style={{ width: w }} />
+    </>
   );
 }
+
+export const SIDEBAR_W = SIDEBAR_WIDTH;
+export const SIDEBAR_COLLAPSED_W = SIDEBAR_COLLAPSED_WIDTH;

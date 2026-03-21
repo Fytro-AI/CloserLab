@@ -22,6 +22,8 @@ export default function Simulation() {
     challengePassScore,
     challengeSystemPrompt,
     customIndustryDescription,
+    interviewRole,
+    interviewCompany,
   } = (location.state as any) || {};
 
   const { profile, loading: profileLoading } = useProfile();
@@ -34,13 +36,15 @@ export default function Simulation() {
     );
   }
 
-  // Voice mode is only available for discovery calls (meeting setter is always text for now)
   if (initialVoiceMode && profile?.subscription_tier === "pro") {
     return (
       <RealtimeCall
         persona={persona}
         industry={industry}
         difficulty={difficulty}
+        simulationMode={simulationMode}
+        interviewRole={interviewRole}
+        interviewCompany={interviewCompany}
         prospectName={prospectName}
         prospectCompany={prospectCompany}
         prospectBackstory={prospectBackstory}
@@ -59,6 +63,8 @@ export default function Simulation() {
               challengeName,
               challengeGoal,
               challengePassScore,
+              interviewRole,
+              interviewCompany,
             },
           })
         }

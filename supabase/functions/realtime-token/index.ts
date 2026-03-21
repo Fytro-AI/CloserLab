@@ -139,6 +139,29 @@ Typical objections:
 - "How quickly can you get someone out?"
 - "Do you guarantee your work?"
 You're practical, price-sensitive, and have been burned before.`,
+
+  healthcare: `You are a healthcare administrator or clinical operations lead evaluating a vendor.
+Your concerns: HIPAA compliance, integration with EHR systems, patient data security, ROI.
+Typical objections:
+- "Is this HIPAA compliant?"
+- "How does this integrate with Epic / Cerner?"
+- "We have a lengthy procurement process. This will take months."
+- "Our IT department will need to review this."
+You are extremely risk-averse and process-driven. Compliance is non-negotiable.`,
+};
+
+const DIFFICULTY_TIME_PRESSURE: Record<string, string> = {
+  easy: "You have about 5 minutes and are mildly open to hearing them out if they're quick.",
+  medium: "You have 3 minutes before your next meeting. You'll give them one or two chances to impress you.",
+  hard: "You have 2 minutes max. You're already annoyed at the interruption.",
+  nightmare: "You have 60 seconds. You're about to hang up. Only something immediately relevant to your exact pain will keep you on the line.",
+};
+
+const DIFFICULTY_BOOKING: Record<string, string> = {
+  easy: "If they articulate a relevant pain and a clear ask, you'll agree to a 20-minute call.",
+  medium: "You'll only agree to a meeting if they nail the pain AND give you a specific, low-friction ask.",
+  hard: "You need to hear your exact problem described back to you before you'll consider a meeting.",
+  nightmare: "You won't agree to a meeting unless they blow you away. Push back on every meeting attempt at least twice.",
 };
 
 function clampText(value: unknown, maxChars: number): string {
@@ -146,7 +169,7 @@ function clampText(value: unknown, maxChars: number): string {
   return value.replace(/\s+/g, " ").trim().slice(0, maxChars);
 }
 
-function buildSystemPrompt(params: {
+function buildDiscoveryPrompt(params: {
   persona: string;
   industry: string;
   difficulty: string;
@@ -204,21 +227,88 @@ REALISM RULES (CRITICAL — these make you feel like a REAL buyer, not a chatbot
 11. You are evaluating whether to buy — act like a real decision-maker with real money on the line.
 12. Never mention that this is a simulation or training exercise.
 13. If the seller is rude or uses profanity, say "I don't have time for this." and end the call.
-14. Vary your response length dramatically. Sometimes one word ("No.", "Why?", "And?"). Sometimes 2-3 sentences. Be unpredictable.
+14. Vary your response length dramatically. Sometimes one word ("No.", "Why?", "And?"). Sometimes 2-3 sentences.
 15. Once the seller shares their name and what they sell, REMEMBER it for the entire call.
 16. Use the seller's NAME when they share it: "Okay [name], but here's my issue..."
 17. Reference specific things the seller said earlier: "You mentioned [X] — what does that mean exactly?"
 18. Your tone should evolve: if they're good, warm up slightly. If they're bad, get colder.
 
-CRITICAL ROLE — READ THIS CAREFULLY:
+CRITICAL ROLE:
 You are ${prospectName || "the buyer"} from ${prospectCompany || "your company"}. You are sitting at your desk. Your phone rang and you picked it up.
 The person talking to you RIGHT NOW is a salesperson who called YOU. You did NOT call anyone.
 You have NO product or service to sell. Ever.
 
 When the call starts: say ONLY "Hello?" or "Yeah?" or a short natural pickup line — then STOP and wait.
 The seller will introduce themselves. React to THEM. Challenge THEM. Question THEM.
-NEVER introduce yourself with a pitch. NEVER ask "what challenges are you facing?" — that is a SELLER question.
-If you ever find yourself about to say something a salesperson would say — STOP. You are the buyer.`;
+NEVER introduce yourself with a pitch. NEVER ask "what challenges are you facing?" — that is a SELLER question.`;
+}
+
+function buildMeetingSetterPrompt(params: {
+  persona: string;
+  industry: string;
+  difficulty: string;
+  prospectName: string;
+  prospectCompany: string;
+  prospectBackstory: string;
+  customIndustryDescription: string;
+}): string {
+  const {
+    persona, industry, difficulty,
+    prospectName, prospectCompany, prospectBackstory,
+    customIndustryDescription,
+  } = params;
+
+  const timePressure = DIFFICULTY_TIME_PRESSURE[difficulty] || DIFFICULTY_TIME_PRESSURE.medium;
+  const bookingBehavior = DIFFICULTY_BOOKING[difficulty] || DIFFICULTY_BOOKING.medium;
+  const industryPrompt = INDUSTRY_PROMPTS[industry] || INDUSTRY_PROMPTS.saas;
+  const industryContext = customIndustryDescription
+    ? `The seller is in this space: ${customIndustryDescription}`
+    : industryPrompt;
+
+  const personaFlavor = persona === "aggressive"
+    ? "You're curt, slightly hostile, and interrupt freely."
+    : persona === "distracted"
+    ? "You're clearly half-focused. Ask them to repeat things."
+    : persona === "budget"
+    ? "You're skeptical of any time investment without clear ROI."
+    : persona === "time-starved"
+    ? "You are extremely pressed for time. Every second counts."
+    : "You're polite but guarded. You've been on too many cold calls.";
+
+  return `You are a BUSY PROFESSIONAL who just picked up a cold call. You are in "get off this call quickly" mode.
+
+YOUR IDENTITY:
+${prospectName ? `Your name is ${prospectName}. You work at ${prospectCompany}.` : ""}
+${prospectBackstory ? `Background: ${prospectBackstory}` : ""}
+
+INDUSTRY CONTEXT:
+${industryContext}
+
+TIME PRESSURE:
+${timePressure}
+
+YOUR ONLY ACCEPTABLE OUTCOME:
+You did NOT ask for this call. The only thing that would make you stay on is if the seller immediately sounds like they understand your world. The only outcome you'd accept is a short, focused follow-up meeting — and ONLY if the seller earns it fast.
+
+WHAT WILL MAKE YOU AGREE TO A MEETING:
+${bookingBehavior}
+
+COLD CALL REALISM RULES (CRITICAL):
+1. You just answered an unexpected call. You did NOT ask for this.
+2. Keep ALL responses SHORT. 1-2 sentences max on voice. You're busy.
+3. You will NOT answer a battery of discovery questions. If they ask more than one question at once, pick one and answer briefly.
+4. If the seller takes more than 2-3 sentences, cut them off: "I'm losing you — what's the ask?"
+5. You DO NOT want to hear a product pitch. You want to know: do they understand your world, and is there a reason to take 20 minutes with them.
+6. React with short, real-world responses: "Mm-hmm.", "Okay, and?", "I've heard that before.", "What does that mean for us?"
+7. Do NOT volunteer information. Make them work for everything.
+8. NEVER ask more than one question per turn.
+9. Pick up the phone naturally with varied openers: "Yeah?", "This is ${prospectName || "me"}.", "Hello?", "Talk to me.", "Yep?", "Go ahead.", "Make it quick."
+10. If the seller asks for a meeting CLEARLY and has shown relevance — agree to it, then say "ending the call now" to end the simulation.
+11. If the seller wastes your time, pitches product features without connecting to pain, or has no clear relevance — hang up. Say "I'm gonna stop you there. Not the right time." then say "ending the call now".
+12. Do NOT mention that this is training or a simulation.
+13. NEVER break character.
+
+PERSONA FLAVOR: ${personaFlavor}`;
 }
 
 serve(async (req) => {
@@ -248,16 +338,17 @@ serve(async (req) => {
     }
 
     const { data: profile } = await supabaseClient
-    .from("profiles")
-    .select("subscription_tier, daily_voice_minutes, last_voice_date")
-    .eq("user_id", userData.user.id)
-    .single();
+      .from("profiles")
+      .select("subscription_tier, daily_voice_minutes, last_voice_date")
+      .eq("user_id", userData.user.id)
+      .single();
 
     if (profile?.subscription_tier !== "pro") {
       return new Response(JSON.stringify({ error: "Pro subscription required for voice calls" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
     const today = new Date().toISOString().slice(0, 10);
     if (profile.last_voice_date !== today) {
       await supabaseClient
@@ -284,17 +375,25 @@ serve(async (req) => {
     const persona = clampText(body.persona, 50) || "skeptical";
     const industry = clampText(body.industry, 50) || "saas";
     const difficulty = clampText(body.difficulty, 50) || "medium";
+    const simulationMode = clampText(body.simulationMode, 50) || "discovery";
     const prospectName = clampText(body.prospectName, 100);
     const prospectCompany = clampText(body.prospectCompany, 200);
     const prospectBackstory = clampText(body.prospectBackstory, 500);
     const challengeSystemPrompt = clampText(body.challengeSystemPrompt, 2000);
     const customIndustryDescription = clampText(body.customIndustryDescription, 1000);
 
-    const fullInstructions = buildSystemPrompt({
-      persona, industry, difficulty,
-      prospectName, prospectCompany, prospectBackstory,
-      challengeSystemPrompt, customIndustryDescription,
-    });
+    // Build the correct prompt based on simulation mode
+    const fullInstructions = simulationMode === "meeting-setter"
+      ? buildMeetingSetterPrompt({
+          persona, industry, difficulty,
+          prospectName, prospectCompany, prospectBackstory,
+          customIndustryDescription,
+        })
+      : buildDiscoveryPrompt({
+          persona, industry, difficulty,
+          prospectName, prospectCompany, prospectBackstory,
+          challengeSystemPrompt, customIndustryDescription,
+        });
 
     const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
       method: "POST",

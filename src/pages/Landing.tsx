@@ -420,22 +420,59 @@ function FinalCTA() {
   );
 }
 
-/* ─── FOOTER ─── */
 function Footer() {
   return (
-    <footer className="border-t border-border py-8 px-4">
-      <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded gradient-primary">
-            <Zap className="h-3 w-3 text-primary-foreground" />
+    <footer className="border-t border-border py-12 px-4">
+      <div className="max-w-5xl mx-auto space-y-8">
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-8">
+          {/* Brand */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="flex h-6 w-6 items-center justify-center rounded gradient-primary">
+                <Zap className="h-3 w-3 text-primary-foreground" />
+              </div>
+              <span className="text-sm font-bold text-foreground">
+                CLOSER<span className="text-primary">LAB</span>
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground max-w-[180px]">Train harder. Close faster.</p>
           </div>
-          <span className="text-sm font-bold text-foreground">
-            CLOSER<span className="text-primary">LAB</span>
-          </span>
+
+          {/* Link columns */}
+          <div className="flex flex-wrap gap-x-12 gap-y-6 text-sm">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Product</p>
+              <div className="space-y-1.5 flex flex-col">
+                <a href="#how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
+                <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
+                <Link to="/auth" className="text-muted-foreground hover:text-foreground transition-colors">Sign Up</Link>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Legal</p>
+              <div className="space-y-1.5 flex flex-col">
+                <Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</Link>
+                <Link to="/terms" className="text-muted-foreground hover:text-foreground transition-colors">Terms of Service</Link>
+                <Link to="/dpa" className="text-muted-foreground hover:text-foreground transition-colors">DPA</Link>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Contact</p>
+              <div className="space-y-1.5 flex flex-col">
+                <a href="mailto:support@closerlab.com" className="text-muted-foreground hover:text-foreground transition-colors">support@closerlab.com</a>
+              </div>
+            </div>
+          </div>
         </div>
-        <p className="text-sm text-muted-foreground">
-          © {new Date().getFullYear()} CloserLab. Train harder. Close faster.
-        </p>
+
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 border-t border-border">
+          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} CloserLab. All rights reserved.</p>
+          <div className="flex items-center gap-4 text-xs">
+            <Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">Privacy</Link>
+            <Link to="/terms" className="text-muted-foreground hover:text-foreground transition-colors">Terms</Link>
+            <Link to="/dpa" className="text-muted-foreground hover:text-foreground transition-colors">DPA</Link>
+          </div>
+        </div>
       </div>
     </footer>
   );

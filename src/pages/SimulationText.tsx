@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { PhoneOff, Send, Clock, X, Target } from "lucide-react";
+import { PhoneOff, Send, Clock, X, Target, Briefcase } from "lucide-react";
 import { PERSONAS } from "@/lib/game-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useVoiceMode } from "@/hooks/useVoiceMode";
@@ -29,9 +29,12 @@ export default function SimulationText() {
     challengePassScore,
     challengeSystemPrompt,
     customIndustryDescription,
+    interviewRole,
+    interviewCompany,
   } = (location.state as any) || {};
 
   const isMeetingSetter = simulationMode === "meeting-setter";
+  const isInterview = simulationMode === "interview";
   const personaData = PERSONAS.find((p) => p.id === persona) || PERSONAS[0];
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -40,7 +43,6 @@ export default function SimulationText() {
   const [isTyping, setIsTyping] = useState(false);
   const [voiceEnabled] = useState(initialVoiceMode);
 
-  // Coach tip state
   const [coachTip, setCoachTip] = useState<string | null>(null);
   const [tipVisible, setTipVisible] = useState(false);
   const [tipOpen, setTipOpen] = useState(false);
@@ -108,16 +110,40 @@ export default function SimulationText() {
     return { display, tip };
   };
 
-  // Route to the correct edge function based on simulationMode
   const getChatUrl = () => {
     const base = import.meta.env.VITE_SUPABASE_URL;
-    return isMeetingSetter
-      ? `${base}/functions/v1/simulation-chat-meeting-setter`
-      : `${base}/functions/v1/simulation-chat`;
+    if (isInterview) return `${base}/functions/v1/simulation-chat-interview`;
+    if (isMeetingSetter) return `${base}/functions/v1/simulation-chat-meeting-setter`;
+    return `${base}/functions/v1/simulation-chat`;
+  };
+
+  const getEndSignal = () => {
+    if (isInterview) return "[INTERVIEW_ENDED]";
+    return "[CALL_ENDED]";
+  };
+
+  const navigateToBreakdown = (transcript: Message[]) => {
+    navigate("/breakdown", {
+      state: {
+        persona,
+        industry,
+        difficulty,
+        duration: elapsed,
+        transcript,
+        simulationMode,
+        challengeId,
+        challengeName,
+        challengeGoal,
+        challengePassScore,
+        interviewRole,
+        interviewCompany,
+      },
+    });
   };
 
   const streamAIResponse = async (conversationHistory: Message[]): Promise<boolean> => {
-    let aiEndedCall = false;
+    let aiEnded = false;
+    const endSignal = getEndSignal();
 
     const { data: { session } } = await supabase.auth.getSession();
     const accessToken = session?.access_token;
@@ -137,9 +163,11 @@ export default function SimulationText() {
           prospectName,
           prospectCompany,
           prospectBackstory,
-          ...(isMeetingSetter ? {} : { challengeSystemPrompt }), // challenge prompts only for discovery
+          ...(isMeetingSetter ? {} : { challengeSystemPrompt }),
           customIndustryDescription,
           simulationMode,
+          interviewRole,
+          interviewCompany,
         }),
       });
 
@@ -175,10 +203,10 @@ export default function SimulationText() {
             const content = parsed.choices?.[0]?.delta?.content as string | undefined;
             if (content) {
               assistantSoFar += content;
-              if (assistantSoFar.includes("[CALL_ENDED]")) aiEndedCall = true;
+              if (assistantSoFar.includes(endSignal)) aiEnded = true;
 
               const { display: displayText, tip } = extractCoachTip(
-                assistantSoFar.replace(/\[CALL_ENDED\]/g, "").trim()
+                assistantSoFar.replace(new RegExp(`\\${endSignal}`, "g"), "").trim()
               );
 
               if (tip) setCoachTip(tip);
@@ -198,7 +226,7 @@ export default function SimulationText() {
         }
       }
 
-      const { tip: finalTip } = extractCoachTip(assistantSoFar.replace(/\[CALL_ENDED\]/g, "").trim());
+      const { tip: finalTip } = extractCoachTip(assistantSoFar.replace(new RegExp(endSignal, "g"), "").trim());
       if (finalTip) {
         setCoachTip(finalTip);
         setTipVisible(true);
@@ -213,31 +241,16 @@ export default function SimulationText() {
       setMessages((m) => [...m, { role: "assistant", content: "Connection error. Try again." }]);
     }
 
-    return aiEndedCall;
+    return aiEnded;
   };
 
   const sendFromMessages = async (conversationHistory: Message[]) => {
     setIsTyping(true);
     try {
-      const aiEnded = await streamAIResponse(conversationHistory);
-      if (aiEnded && !callEndedRef.current) {
+      const ended = await streamAIResponse(conversationHistory);
+      if (ended && !callEndedRef.current) {
         callEndedRef.current = true;
-        setTimeout(() => {
-          navigate("/breakdown", {
-            state: {
-              persona,
-              industry,
-              difficulty,
-              duration: elapsed,
-              transcript: conversationHistory,
-              simulationMode,
-              challengeId,
-              challengeName,
-              challengeGoal,
-              challengePassScore,
-            },
-          });
-        }, 1800);
+        setTimeout(() => navigateToBreakdown(conversationHistory), 1800);
       }
     } finally {
       setIsTyping(false);
@@ -256,25 +269,11 @@ export default function SimulationText() {
   const endCall = () => {
     voice.stopSpeaking();
     voice.stopListening();
-    navigate("/breakdown", {
-      state: {
-        persona,
-        industry,
-        difficulty,
-        duration: elapsed,
-        transcript: messages,
-        simulationMode,
-        challengeId,
-        challengeName,
-        challengeGoal,
-        challengePassScore,
-      },
-    });
+    navigateToBreakdown(messages);
   };
 
   const lastAIMessage = [...messages].reverse().find(m => m.role === "assistant")?.content || "";
 
-  // TTS voice path
   if (voiceEnabled) {
     return (
       <CallScreen
@@ -310,6 +309,16 @@ export default function SimulationText() {
 
       <div className="container mx-auto flex h-[calc(100vh-3.5rem)] max-w-2xl flex-col px-4 py-4">
 
+        {/* Interview banner */}
+        {isInterview && (
+          <div className="rounded-t-lg border border-b-0 border-primary/30 bg-primary/5 px-3 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
+              <Briefcase className="h-3.5 w-3.5" /> Interview Prep — {interviewRole}
+            </div>
+            <div className="text-xs text-muted-foreground">{interviewCompany}</div>
+          </div>
+        )}
+
         {/* Meeting Setter banner */}
         {isMeetingSetter && (
           <div className="rounded-t-lg border border-b-0 border-primary/30 bg-primary/5 px-3 py-2 flex items-center justify-between">
@@ -321,7 +330,7 @@ export default function SimulationText() {
         )}
 
         {/* Challenge banner */}
-        {challengeId && !isMeetingSetter && (
+        {challengeId && !isMeetingSetter && !isInterview && (
           <div className="rounded-t-lg border border-b-0 border-accent/30 bg-accent/10 px-3 py-2 flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-accent">
               🎯 {challengeName}
@@ -331,14 +340,16 @@ export default function SimulationText() {
         )}
 
         {/* Header */}
-        <div className={`flex items-center justify-between border border-border bg-card p-3 ${(isMeetingSetter || challengeId) ? "" : "rounded-t-lg"}`}>
+        <div className={`flex items-center justify-between border border-border bg-card p-3 ${(isMeetingSetter || challengeId || isInterview) ? "" : "rounded-t-lg"}`}>
           <div className="flex items-center gap-2">
-            <span className="text-xl">{personaData.icon}</span>
+            <span className="text-xl">{isInterview ? "🏢" : personaData.icon}</span>
             <div>
-              <div className="text-sm font-bold text-foreground">{prospectName || personaData.label}</div>
+              <div className="text-sm font-bold text-foreground">
+                {isInterview ? `${interviewRole} Interview` : prospectName || personaData.label}
+              </div>
               <div className="text-xs text-muted-foreground">
-                {prospectCompany || "Prospect"} •{" "}
-                {isMeetingSetter ? "Cold Call" : "Active Call"}
+                {isInterview ? interviewCompany : prospectCompany || "Prospect"} •{" "}
+                {isInterview ? "Hiring Manager" : isMeetingSetter ? "Cold Call" : "Active Call"}
               </div>
             </div>
           </div>
@@ -356,7 +367,9 @@ export default function SimulationText() {
           {messages.length === 0 && (
             <div className="flex items-center justify-center h-full">
               <p className="text-xs text-muted-foreground text-center max-w-xs">
-                {isMeetingSetter
+                {isInterview
+                  ? "The interview is about to begin. Wait for the hiring manager to start."
+                  : isMeetingSetter
                   ? "They just picked up. You called them cold. Go."
                   : "The call has started. Make your opening move."}
               </p>
@@ -376,7 +389,7 @@ export default function SimulationText() {
           {isTyping && messages[messages.length - 1]?.role !== "assistant" && (
             <div className="flex justify-start">
               <div className="bg-secondary text-muted-foreground rounded-lg px-4 py-2.5 text-sm">
-                <span className="animate-pulse">typing...</span>
+                <span className="animate-pulse">{isInterview ? "thinking..." : "typing..."}</span>
               </div>
             </div>
           )}
@@ -389,7 +402,7 @@ export default function SimulationText() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            placeholder={isMeetingSetter ? "Say your opener..." : "Type your pitch..."}
+            placeholder={isInterview ? "Type your answer..." : isMeetingSetter ? "Say your opener..." : "Type your pitch..."}
             disabled={isTyping}
             className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
           />
@@ -417,53 +430,31 @@ export default function SimulationText() {
                   boxShadow: "0 0 0 1px rgba(132,204,22,0.08), 0 0 40px rgba(132,204,22,0.12), 0 12px 40px rgba(0,0,0,0.7)",
                   zIndex: 100,
                 }}>
-                  <div style={{
-                    position: "absolute",
-                    bottom: "-6px",
-                    right: "11px",
-                    width: "11px",
-                    height: "11px",
-                    background: "#0f0f0f",
-                    border: "1px solid rgba(132,204,22,0.35)",
-                    borderTop: "none",
-                    borderLeft: "none",
-                    transform: "rotate(45deg)",
-                  }} />
+                  <div style={{ position: "absolute", bottom: "-6px", right: "11px", width: "11px", height: "11px", background: "#0f0f0f", border: "1px solid rgba(132,204,22,0.35)", borderTop: "none", borderLeft: "none", transform: "rotate(45deg)" }} />
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
                     <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#84cc16" }}>
-                      💡 Coach's Tip
+                      💡 {isInterview ? "Interview Coach" : "Coach's Tip"}
                     </span>
-                    <button
-                      onClick={() => setTipOpen(false)}
-                      style={{ background: "none", border: "none", color: "#555", cursor: "pointer", padding: "0", lineHeight: 1, fontSize: "14px" }}
-                    >
+                    <button onClick={() => setTipOpen(false)} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", padding: "0", lineHeight: 1, fontSize: "14px" }}>
                       <X size={13} />
                     </button>
                   </div>
                   <div style={{ height: "1px", background: "rgba(132,204,22,0.12)", marginBottom: "10px" }} />
-                  <p style={{ color: "#d4d4d4", fontSize: "13px", lineHeight: 1.6, margin: 0 }}>
-                    {coachTip}
-                  </p>
+                  <p style={{ color: "#d4d4d4", fontSize: "13px", lineHeight: 1.6, margin: 0 }}>{coachTip}</p>
                 </div>
               )}
               <button
                 onClick={() => { setTipOpen((o) => !o); setTipBouncing(false); }}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: "38px",
-                  height: "38px",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  width: "38px", height: "38px",
                   background: tipOpen ? "#84cc16" : "rgba(132,204,22,0.12)",
                   border: `1px solid ${tipOpen ? "#84cc16" : "rgba(132,204,22,0.4)"}`,
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  fontSize: "17px",
-                  lineHeight: 1,
+                  borderRadius: "8px", cursor: "pointer", fontSize: "17px", lineHeight: 1,
                   transition: "background 0.15s, border-color 0.15s",
                   animation: tipBouncing ? "coachBounce 0.5s ease infinite alternate" : "none",
                 }}
-                title="Coach's Tip"
+                title={isInterview ? "Interview Coach" : "Coach's Tip"}
               >
                 💡
               </button>
@@ -477,7 +468,6 @@ export default function SimulationText() {
             <PhoneOff className="h-4 w-4" />
           </button>
         </div>
-
       </div>
     </>
   );

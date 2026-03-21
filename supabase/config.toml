@@ -26,3 +26,9 @@ verify_jwt = false
 
 [functions.track-voice-usage]
 verify_jwt = false
+
+[functions.live-call-coach]
+verify_jwt = false
+
+[functions.simulation-chat-meeting-setter]
+verify_jwt = false
