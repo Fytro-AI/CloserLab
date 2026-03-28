@@ -20,14 +20,9 @@ import Account from "./pages/Account";
 import LiveCallPage from "./pages/LiveCallPage";
 import CompanySettings from "./pages/CompanySettings";
 import ComingSoon from "./pages/ComingSoon";
-import Privacy from "./pages/Privacy";
-import Terms from "./pages/Terms";
-import DPA from "./pages/DPA";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
-
-const NO_SIDEBAR_PATHS = ["/landing", "/auth", "/privacy", "/terms", "/dpa"];
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -44,18 +39,21 @@ function AppRoutes() {
   const { user } = useAuth();
   const location = useLocation();
 
-  const hideSidebar = !user || NO_SIDEBAR_PATHS.includes(location.pathname);
+  // Hide sidebar on landing and auth pages
+  const hideSidebar = !user
+    || location.pathname === "/landing"
+    || location.pathname === "/auth";
 
   return (
     <div className="flex min-h-screen bg-background">
+      {/* Sidebar renders itself as position:fixed + injects a spacer div */}
       {!hideSidebar && <Navbar />}
-      <main className="flex-1 min-w-0 overflow-y-auto">
+
+      {/* Page content fills remaining width. pb-[60px] clears mobile bottom tab bar */}
+      <main className="flex-1 min-w-0 overflow-y-auto pb-[60px] md:pb-0">
         <Routes>
           <Route path="/landing" element={<Landing />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/dpa" element={<DPA />} />
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/scenarios" element={<ProtectedRoute><Scenarios /></ProtectedRoute>} />
           <Route path="/challenges" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />

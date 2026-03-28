@@ -39,12 +39,74 @@ export default function Navbar() {
     { path: "/coming-soon", label: "Live Call",  icon: Phone, soon: true },
   ];
 
+  // Bottom tab items — show the 5 most important on mobile
+  const BOTTOM_TABS: NavItem[] = [
+    { path: "/",          label: "Home",    icon: Target },
+    { path: "/scenarios", label: "Train",   icon: Zap },
+    { path: "/leaderboard", label: "Ranks", icon: Trophy },
+    { path: "/pricing",   label: "Pro",     icon: CreditCard },
+    { path: "/account",   label: "Account", icon: User2Icon },
+  ];
+
   const w = collapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH;
 
   return (
     <>
+      {/* ══════════════════════════════════════
+          MOBILE: top bar + bottom tab bar
+          hidden on md+
+      ══════════════════════════════════════ */}
+      <div className="md:hidden">
+        {/* Top bar */}
+        <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-14 px-4 border-b border-border bg-background/95 backdrop-blur-xl">
+          <Link to="/" className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md gradient-primary">
+              <Zap className="h-3.5 w-3.5 text-primary-foreground" />
+            </div>
+            <span className="text-base font-black tracking-tight text-foreground">
+              CLOSER<span className="text-primary">LAB</span>
+            </span>
+          </Link>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-mono font-bold text-accent">{xp} XP</span>
+            <Link to="/account" className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-base">
+              {rank.icon}
+            </Link>
+          </div>
+        </header>
+
+        {/* Spacer so content doesn't hide under top bar */}
+        <div className="h-14" />
+
+        {/* Bottom tab bar */}
+        <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-border bg-background/95 backdrop-blur-xl">
+          {BOTTOM_TABS.map(({ path, label, icon: Icon }) => {
+            const active = location.pathname === path;
+            return (
+              <Link
+                key={path}
+                to={path}
+                className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-colors ${
+                  active ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                <span className="text-[10px] font-semibold">{label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Spacer so content doesn't hide under bottom tab bar */}
+        <div className="fixed bottom-0 left-0 right-0 h-[60px] pointer-events-none" />
+      </div>
+
+      {/* ══════════════════════════════════════
+          DESKTOP: left sidebar
+          hidden on mobile
+      ══════════════════════════════════════ */}
       <aside
-        className="fixed top-0 left-0 bottom-0 z-50 flex flex-col border-r border-border bg-background/95 backdrop-blur-xl transition-all duration-200"
+        className="hidden md:flex fixed top-0 left-0 bottom-0 z-50 flex-col border-r border-border bg-background/95 backdrop-blur-xl transition-all duration-200"
         style={{ width: w }}
       >
         {/* Logo */}
@@ -133,8 +195,8 @@ export default function Navbar() {
         </div>
       </aside>
 
-      {/* Spacer */}
-      <div className="flex-shrink-0 transition-all duration-200" style={{ width: w }} />
+      {/* Desktop spacer — pushes page content right of sidebar */}
+      <div className="hidden md:block flex-shrink-0 transition-all duration-200" style={{ width: w }} />
     </>
   );
 }
