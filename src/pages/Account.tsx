@@ -152,7 +152,7 @@ export default function Account() {
               </div>
               <div className="flex items-center gap-2 opacity-50">
                 <Mic className="h-4 w-4" />
-                <span>Voice calls — upgrade to Pro</span>
+                <span>Voice calls - upgrade to Pro</span>
               </div>
             </>
           )}
@@ -164,7 +164,7 @@ export default function Account() {
               </div>
               <div className="flex items-center gap-2 opacity-50">
                 <Mic className="h-4 w-4" />
-                <span>Voice calls — upgrade to Pro</span>
+                <span>Voice calls - upgrade to Pro</span>
               </div>
             </>
           )}

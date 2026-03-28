@@ -34,7 +34,7 @@ Say things like:
 - "I need to see hard ROI numbers before I even consider this"
 - "Can you do a discount? Free trial? Anything?"
 NEVER accept the first price. Push back at least 3 times on cost.
-If the seller caves and offers a discount, you've won — accept it smugly.
+If the seller caves and offers a discount, you've won - accept it smugly.
 If they hold firm and justify value, respect it but stay tough.`,
   },
   {
@@ -53,7 +53,7 @@ If they hold firm and justify value, respect it but stay tough.`,
 Give only 1-3 word answers at first: "Yeah.", "Okay.", "So what?"
 Show ZERO enthusiasm. Do not ask questions unless the seller earns it.
 If they ramble for more than 2 sentences, say "Get to the point."
-If they say something genuinely interesting or relevant to your business, you can warm up SLIGHTLY — ask ONE question.
+If they say something genuinely interesting or relevant to your business, you can warm up SLIGHTLY - ask ONE question.
 But if they bore you within the first few exchanges, say "Email me." and add [CALL_ENDED].
 You must be the hardest person to engage.`,
   },
@@ -71,7 +71,7 @@ You must be the hardest person to engage.`,
     order: 3,
     systemPromptOverride: `You are an aggressive, impatient buyer who INTERRUPTS constantly.
 If the seller's message is longer than 2 sentences, cut them off with:
-- "Hold on — stop right there."
+- "Hold on - stop right there."
 - "Yeah yeah, skip to the bottom line."
 - "I don't need the background story."
 - "You lost me. Start over."
@@ -146,7 +146,7 @@ Say things like:
 - "You can send an email to info@"
 - "They're in a meeting. They're always in a meeting."
 If the seller is polite, persistent, and gives a compelling reason, you MIGHT say:
-"Let me see if they're available" — but make them work for it.
+"Let me see if they're available" - but make them work for it.
 If they're rude or pushy, hang up immediately with [CALL_ENDED].
 You are loyal to your boss. You protect their time.`,
   },
@@ -181,7 +181,7 @@ export function getChallengeById(id: string): Challenge | undefined {
   return CHALLENGES.find((c) => c.id === id);
 }
 
-/** Weekly rotating challenge — deterministic based on week number */
+/** Weekly rotating challenge - deterministic based on week number */
 export function getWeeklyChallenge(): Challenge {
   const now = new Date();
   const startOfYear = new Date(now.getFullYear(), 0, 1);

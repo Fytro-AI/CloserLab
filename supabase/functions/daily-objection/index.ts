@@ -20,7 +20,7 @@ const OBJECTION_SCENARIOS = [
   { context: "You're pitching an AI analytics tool to a VP of Product.", objection: "AI is just a buzzword. I've seen zero real ROI from any AI tool we've tried. Prove me wrong." },
   { context: "You're selling a project management tool to an engineering director.", objection: "My team hates new tools. Every time we introduce something, adoption drops to zero after a month." },
   { context: "You're pitching payment processing to an e-commerce founder.", objection: "We're doing fine with Stripe. Why would I add another vendor to manage?" },
-  { context: "You're selling HR software to a People Operations lead.", objection: "This seems like it's built for big companies. We're only 50 people — isn't this overkill?" },
+  { context: "You're selling HR software to a People Operations lead.", objection: "This seems like it's built for big companies. We're only 50 people - isn't this overkill?" },
   { context: "You're offering a data warehouse solution to a Head of Data.", objection: "I need to talk to my team before making any decision. Can you just send me some materials?" },
   { context: "You're selling cybersecurity training to a compliance officer.", objection: "Our employees already do annual compliance training. Adding more will just annoy them." },
   { context: "You're pitching a customer support platform to a VP of CX.", objection: "We built our own ticketing system in-house. It's not great, but at least it's free." },

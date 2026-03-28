@@ -64,7 +64,7 @@ export function useProfile() {
         }
       }
     } catch {
-      // Silently fail — subscription check is best-effort
+      // Silently fail - subscription check is best-effort
     }
   };
 

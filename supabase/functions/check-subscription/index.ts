@@ -7,7 +7,7 @@ const STARTER_PRICE_IDS = [
   "price_1T9rrSPNpQaZotKHNxsyxpAD",
 ];
 const PRO_PRICE_IDS = [
-  "price_1T9rx3PNpQaZotKHzAmrOT3F",
+  "price_1TFyHMPNpQaZotKH7JxiFjOG",
   "price_1T9s39PNpQaZotKHp1Ji6V5m",
 ];
 
@@ -62,7 +62,7 @@ serve(async (req) => {
     const user = userData.user;
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-        // ── Beta tester check — skip Stripe entirely ──────────────────────────────
+        // ── Beta tester check - skip Stripe entirely ──────────────────────────────
     const { data: profile } = await supabaseAdmin
       .from("profiles")
       .select("is_beta_tester")

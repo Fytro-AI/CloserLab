@@ -313,7 +313,7 @@ export default function SimulationText() {
         {isInterview && (
           <div className="rounded-t-lg border border-b-0 border-primary/30 bg-primary/5 px-3 py-2 flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
-              <Briefcase className="h-3.5 w-3.5" /> Interview Prep — {interviewRole}
+              <Briefcase className="h-3.5 w-3.5" /> Interview Prep - {interviewRole}
             </div>
             <div className="text-xs text-muted-foreground">{interviewCompany}</div>
           </div>

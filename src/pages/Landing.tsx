@@ -291,7 +291,7 @@ function PricingSection() {
     },
     {
       name: "Pro",
-      price: "€29.99",
+      price: "€24.99",
       period: "/month",
       features: [
         "Everything in Starter",

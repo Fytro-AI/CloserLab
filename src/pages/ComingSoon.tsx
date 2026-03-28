@@ -23,7 +23,7 @@ export default function ComingSoon() {
         <div className="rounded-xl border border-border bg-card p-5 text-left space-y-2">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">What's coming</p>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Share your call tab — Teams, Zoom, Meet — and take a live AI assistant with you
+            Share your call tab - Teams, Zoom, Meet - and take a live AI assistant with you
             on real calls to give you the exact replies to every objection.
           </p>
         </div>

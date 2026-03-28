@@ -109,14 +109,14 @@ export default function RealtimeCall({
         if (step === 1) {
           dcRef.current.send(JSON.stringify({
             type: "conversation.item.create",
-            item: { type: "message", role: "user", content: [{ type: "input_text", text: "(The candidate hasn't spoken yet. Say something natural like 'Hello? Can you hear me?' — stay in character.)" }] },
+            item: { type: "message", role: "user", content: [{ type: "input_text", text: "(The candidate hasn't spoken yet. Say something natural like 'Hello? Can you hear me?' - stay in character.)" }] },
           }));
           dcRef.current.send(JSON.stringify({ type: "response.create" }));
           runStep(2, 5000);
         } else if (step === 2) {
           dcRef.current.send(JSON.stringify({
             type: "conversation.item.create",
-            item: { type: "message", role: "user", content: [{ type: "input_text", text: "(Still no response. Say something brief — 'Anyone there?', 'I'm losing you...' — stay in character.)" }] },
+            item: { type: "message", role: "user", content: [{ type: "input_text", text: "(Still no response. Say something brief - 'Anyone there?', 'I'm losing you...' - stay in character.)" }] },
           }));
           dcRef.current.send(JSON.stringify({ type: "response.create" }));
           runStep(3, 5000);
@@ -317,7 +317,7 @@ export default function RealtimeCall({
         if (dcRef.current?.readyState === "open") {
           const openingCue = isInterview
             ? "(The interview is starting. Greet the candidate warmly and ask them to introduce themselves.)"
-            : "(Phone ringing — you pick up)";
+            : "(Phone ringing - you pick up)";
           dcRef.current.send(JSON.stringify({
             type: "conversation.item.create",
             item: { type: "message", role: "user", content: [{ type: "input_text", text: openingCue }] },

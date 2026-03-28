@@ -209,7 +209,7 @@ export default function Challenges() {
                         <div className="text-[10px] text-accent font-semibold mt-0.5">{result.score}</div>
                       )}
                       {!result && !locked && (
-                        <div className="text-[10px] text-muted-foreground mt-0.5">—</div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">-</div>
                       )}
                     </button>
                   );

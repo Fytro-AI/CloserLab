@@ -114,7 +114,7 @@ export default function DailyObjections() {
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Handle real buyer objections. Write the best response you can — AI will score you.
+        Handle real buyer objections. Write the best response you can - AI will score you.
       </p>
 
       {/* Active objection card */}

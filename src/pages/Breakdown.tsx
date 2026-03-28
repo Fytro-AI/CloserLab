@@ -270,7 +270,7 @@ export default function Breakdown() {
               {scores.overall_score >= (challengePassScore || 70) ? "Challenge Passed" : "Challenge Failed"}
             </span>
           </div>
-          <p className="text-sm text-muted-foreground">{challengeName} — Need {challengePassScore}+ to pass</p>
+          <p className="text-sm text-muted-foreground">{challengeName} - Need {challengePassScore}+ to pass</p>
         </div>
       )}
 

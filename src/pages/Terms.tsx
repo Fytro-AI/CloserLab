@@ -41,9 +41,9 @@ const SECTIONS = [
       {
         title: "Plans",
         items: [
-          "Free — 3 simulation sessions total, text-only",
-          "Starter — Unlimited text simulations, all personas, full scoring",
-          "Pro — Everything in Starter plus real-time AI voice calls (45 min/day)",
+          "Free - 3 simulation sessions total, text-only",
+          "Starter - Unlimited text simulations, all personas, full scoring",
+          "Pro - Everything in Starter plus real-time AI voice calls (45 min/day)",
         ],
       },
       {
@@ -51,7 +51,7 @@ const SECTIONS = [
         items: [
           "Subscriptions are billed in advance monthly or annually via Stripe",
           "All fees are in EUR and are non-refundable except where required by law",
-          "You may cancel at any time — cancellation takes effect at the end of the billing period",
+          "You may cancel at any time - cancellation takes effect at the end of the billing period",
           "No partial refunds are issued for unused time within a billing period",
         ],
       },
@@ -83,7 +83,7 @@ const SECTIONS = [
     title: "6. AI-Generated Content",
     content: ["The Service uses OpenAI to generate simulated buyer responses, scoring, and coaching. You acknowledge that:"],
     items: [
-      "AI outputs are for training purposes only — not professional sales advice",
+      "AI outputs are for training purposes only - not professional sales advice",
       "AI-generated feedback may occasionally be inaccurate or incomplete",
       "You are responsible for how you apply any coaching suggestions in the real world",
       "CloserLab does not guarantee specific skill outcomes or sales performance improvements",

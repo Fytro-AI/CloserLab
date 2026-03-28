@@ -236,7 +236,7 @@ export default function Scenarios() {
 
           <div className="space-y-2">
             <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-              Company <span className="text-xs font-normal normal-case text-muted-foreground/60">(optional — leave blank for random)</span>
+              Company <span className="text-xs font-normal normal-case text-muted-foreground/60">(optional - leave blank for random)</span>
             </h2>
             <input
               value={interviewCompany}
@@ -336,7 +336,7 @@ export default function Scenarios() {
         </div>
       )}
 
-      {/* CALL MODE — shown for ALL simulation modes */}
+      {/* CALL MODE - shown for ALL simulation modes */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Call Mode</h2>
         <div className="grid grid-cols-2 gap-3">
@@ -372,7 +372,7 @@ export default function Scenarios() {
             <div className="text-xs text-muted-foreground">
               {profile?.is_pro
                 ? isInterviewMode ? "Speak your answers aloud" : "Speak your pitch aloud"
-                : "Pro feature — upgrade to unlock"}
+                : "Pro feature - upgrade to unlock"}
             </div>
           </button>
         </div>
@@ -391,12 +391,12 @@ export default function Scenarios() {
         <span className="flex items-center justify-center gap-2">
           <Zap className="h-5 w-5" />
           {!canSimulate
-            ? "No simulations left — Go Pro"
+            ? "No simulations left - Go Pro"
             : canStart
             ? isInterviewMode
               ? "Start Interview"
               : simulationMode === "meeting-setter"
-              ? "Enter the Arena — Book the Meeting"
+              ? "Enter the Arena - Book the Meeting"
               : "Enter the Arena"
             : isInterviewMode
             ? "Select difficulty to begin"
@@ -413,7 +413,7 @@ export default function Scenarios() {
             </button>
             <div className="text-center space-y-1">
               <p className="text-xs font-semibold uppercase tracking-widest text-primary">
-                {simulationMode === "meeting-setter" ? "Cold Call — Book the Meeting" : "Incoming Call"}
+                {simulationMode === "meeting-setter" ? "Cold Call - Book the Meeting" : "Incoming Call"}
               </p>
               <div className="text-5xl mt-3 mb-2">{personaData.icon}</div>
               <h2 className="text-2xl font-black text-foreground">{prospect.firstName} {prospect.lastName}</h2>

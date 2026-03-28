@@ -284,7 +284,7 @@ export default function CompanySettings() {
         <div className="space-y-1">
           <h1 className="text-2xl font-black text-foreground tracking-tight">My Company</h1>
           <p className="text-sm text-muted-foreground">
-            Your AI coach reads these profiles during live calls to give you relevant, specific tips — not generic advice.
+            Your AI coach reads these profiles during live calls to give you relevant, specific tips - not generic advice.
           </p>
         </div>
       </div>
@@ -323,7 +323,7 @@ export default function CompanySettings() {
           {profiles.map((p) =>
             editingId === p.id ? (
               <div key={p.id} className="rounded-xl border border-primary/30 bg-card p-6 space-y-4">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-primary">Edit — {p.name}</h2>
+                <h2 className="text-sm font-bold uppercase tracking-widest text-primary">Edit - {p.name}</h2>
                 <ProfileForm
                   initial={p}
                   onSave={handleUpdate}

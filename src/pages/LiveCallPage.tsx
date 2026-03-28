@@ -209,7 +209,7 @@ function HoldButton({ onRelease, disabled }: {
             {held
               ? interimPreview
                 ? `"${interimPreview.slice(0, 60)}${interimPreview.length > 60 ? "…" : ""}"`
-                : "Hold through pauses — release when done"
+                : "Hold through pauses - release when done"
               : "Hold through pauses. Release when they finish."
             }
           </p>
@@ -245,7 +245,7 @@ function SetupScreen({ profiles, onStart }: {
         </div>
         <h1 className="text-2xl font-black text-foreground tracking-tight">Live Call Assistant</h1>
         <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-          Hold the button while your prospect speaks. Release — your script appears instantly.
+          Hold the button while your prospect speaks. Release - your script appears instantly.
         </p>
       </div>
 
@@ -299,9 +299,9 @@ function SetupScreen({ profiles, onStart }: {
         <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">How it works</p>
         <ol className="space-y-1.5 text-sm text-muted-foreground">
           <li className="flex gap-2"><span className="text-primary font-bold flex-shrink-0">1.</span>Open your call in Teams / Zoom / Meet in another tab</li>
-          <li className="flex gap-2"><span className="text-primary font-bold flex-shrink-0">2.</span>Click below — pick the tab, tick <strong className="text-foreground">Share tab audio</strong></li>
-          <li className="flex gap-2"><span className="text-primary font-bold flex-shrink-0">3.</span><strong className="text-foreground">Hold the button</strong> while prospect speaks — through pauses too</li>
-          <li className="flex gap-2"><span className="text-primary font-bold flex-shrink-0">4.</span>Release — full script streams in instantly</li>
+          <li className="flex gap-2"><span className="text-primary font-bold flex-shrink-0">2.</span>Click below - pick the tab, tick <strong className="text-foreground">Share tab audio</strong></li>
+          <li className="flex gap-2"><span className="text-primary font-bold flex-shrink-0">3.</span><strong className="text-foreground">Hold the button</strong> while prospect speaks - through pauses too</li>
+          <li className="flex gap-2"><span className="text-primary font-bold flex-shrink-0">4.</span>Release - full script streams in instantly</li>
         </ol>
       </div>
 
@@ -527,7 +527,7 @@ function ActiveCallScreen({ company, prospectInfo, callGoal, stream, onEnd }: {
         <div className="flex-1 flex overflow-hidden">
           <div className="flex-1 flex flex-col overflow-hidden">
 
-            {/* SCRIPTS — fills all available height, scrollable */}
+            {/* SCRIPTS - fills all available height, scrollable */}
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-5 space-y-5 min-h-0">
 
               {entries.length === 0 && (
@@ -585,7 +585,7 @@ function ActiveCallScreen({ company, prospectInfo, callGoal, stream, onEnd }: {
               <div className="h-2" />
             </div>
 
-            {/* HOLD BUTTON — pinned to bottom, fixed height */}
+            {/* HOLD BUTTON - pinned to bottom, fixed height */}
             <div className="flex-shrink-0 border-t border-border bg-card px-5 py-4 space-y-3">
               <HoldButton onRelease={handleProspectUtterance} disabled={isGenerating} />
               <div className="flex items-center justify-between">

@@ -108,7 +108,7 @@ const SECTIONS = [
     id: "contact",
     title: "9. Contact",
     content: [
-      "For DPA-related enquiries, email support@closerlab.com with subject line: \"DPA Request — [your company name]\".",
+      "For DPA-related enquiries, email support@closerlab.com with subject line: \"DPA Request - [your company name]\".",
       "We aim to respond to all formal DPA enquiries within 5 business days.",
       "Last updated: March 21, 2026",
     ],
@@ -133,7 +133,7 @@ export default function DPA() {
             <span className="text-xs font-bold uppercase tracking-widest text-primary">Legal</span>
           </div>
           <h1 className="text-4xl font-black text-foreground tracking-tight">Data Processing Agreement</h1>
-          <p className="mt-2 text-sm text-muted-foreground">GDPR Article 28 — Effective March 21, 2026</p>
+          <p className="mt-2 text-sm text-muted-foreground">GDPR Article 28 - Effective March 21, 2026</p>
         </div>
       </div>
 
