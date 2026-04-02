@@ -250,12 +250,7 @@ serve(async (req) => {
     }
 
     for (const m of messages) {
-      if (
-        !m.role ||
-        !["user", "assistant"].includes(m.role) ||
-        typeof m.content !== "string" ||
-        m.content.length > 5000
-      ) {
+      if ( !m.role || !["user", "assistant"].includes(m.role) || typeof m.content !== "string" || m.content.length > 20000) {
         return new Response(JSON.stringify({ error: "Invalid message format" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

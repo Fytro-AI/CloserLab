@@ -412,7 +412,7 @@ serve(async (req) => {
           type: "server_vad",
           threshold: 0.5,
           prefix_padding_ms: 300,
-          silence_duration_ms: 700,
+          silence_duration_ms: 1400,
           create_response: false,
         },
         max_response_output_tokens: 300,

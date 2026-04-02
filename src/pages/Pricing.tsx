@@ -68,6 +68,7 @@ const PLANS = [
     highlighted: true,
     badge: "Most Popular",
     priceId: { monthly: PRICES.pro_monthly, yearly: PRICES.pro_yearly },
+    trial: "1-day free trial",
   },
 ];
 
@@ -173,6 +174,11 @@ export default function Pricing() {
                   <h3 className="text-xl font-black text-foreground">{plan.name}</h3>
                   {plan.id === "pro" && <Mic className="h-4 w-4 text-primary" />}
                 </div>
+                {plan.trial && (
+                  <div className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary mt-2">
+                    ✦ {plan.trial}
+                  </div>
+                )}
                 <div className="flex items-baseline gap-1 mt-2">
                   <span className="text-4xl font-black text-foreground">{displayPrice}</span>
                   {plan.period !== "forever" && (
@@ -217,25 +223,32 @@ export default function Pricing() {
                   Free Forever
                 </div>
               ) : (
-                <button
-                  onClick={() => handleCheckout(selectedPriceId)}
-                  disabled={!!loadingPlan}
-                  className={`w-full rounded-lg py-3 font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
-                    plan.highlighted
-                      ? "gradient-primary text-primary-foreground hover:opacity-90"
-                      : "border border-border bg-secondary text-foreground hover:bg-primary/10 hover:border-primary/30"
-                  } disabled:opacity-50`}
-                >
-                  {loadingPlan === selectedPriceId ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Zap className="h-4 w-4" />
-                      {plan.cta}
-                    </>
-                  )}
-                </button>
-              )}
+                <>
+                  <button
+                    onClick={() => handleCheckout(selectedPriceId)}
+                    disabled={!!loadingPlan}
+                    className={`w-full rounded-lg py-3 font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                      plan.highlighted
+                        ? "gradient-primary text-primary-foreground hover:opacity-90"
+                        : "border border-border bg-secondary text-foreground hover:bg-primary/10 hover:border-primary/30"
+                    } disabled:opacity-50`}
+                  >
+                    {loadingPlan === selectedPriceId ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Zap className="h-4 w-4" />
+                        {plan.cta}
+                      </>
+                    )}
+                  </button>
+                {plan.trial && billingCycle === "yearly" && (
+                  <p className="text-center text-xs text-muted-foreground mt-1.5">
+                    Try free for 1 day — cancel anytime
+                  </p>
+                )}
+              </>
+            )}
             </div>
           );
         })}
