@@ -58,14 +58,15 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
-    const isProMonthly = priceId === "price_1T9rx3PNpQaZotKHzAmrOT3F";
+    const isProMonthly = priceId === "price_1TFyHMPNpQaZotKH7JxiFjOG";
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
-      subscription_data: isProMonthly ? {
+      allow_promotion_codes: true,
+      subscription_data: (isProMonthly) ? {
         trial_period_days: 1,
         trial_settings: {
           end_behavior: {
