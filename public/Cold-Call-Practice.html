@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cold Call Practice Tool | CloserLab — AI Cold Calling Simulator</title>
+  <meta name="description" content="Practice cold calls on an AI prospect that actually pushes back. CloserLab's cold call simulator trains you to handle objections, stay confident, and book more meetings." />
+  <meta name="keywords" content="cold call practice, cold calling simulator, cold call training, cold call AI, practice cold calls, SDR cold call training" />
+  <link rel="canonical" href="https://closerlab.io/cold-call-practice" />
+  <meta property="og:title" content="Cold Call Practice Tool | CloserLab" />
+  <meta property="og:description" content="Practice cold calls on an AI that actually pushes back. Handle objections. Book more meetings." />
+  <meta property="og:url" content="https://closerlab.io/cold-call-practice" />
+  <meta property="og:type" content="website" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"CloserLab Cold Call Simulator","applicationCategory":"BusinessApplication","description":"AI cold call practice tool for SDRs and BDRs.","url":"https://closerlab.io/cold-call-practice"}</script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --background: #09090b; --foreground: #fafafa; --muted-foreground: #a1a1aa; --border: #27272a; --card: #111113; --primary: #a3e635; --primary-dark: #65a30d; --destructive: #ef4444; }
+    html { scroll-behavior: smooth; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--background); color: var(--foreground); line-height: 1.6; }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    nav.top { position: fixed; top: 0; left: 0; right: 0; z-index: 50; display: flex; align-items: center; justify-content: space-between; height: 56px; padding: 0 1rem; border-bottom: 1px solid var(--border); background: rgba(9,9,11,0.85); backdrop-filter: blur(16px); }
+    .nav-logo { display: flex; align-items: center; gap: 0.5rem; text-decoration: none; }
+    .nav-logo-icon { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); }
+    .nav-logo-icon svg { width: 16px; height: 16px; color: #000; }
+    .nav-logo-text { font-size: 1.125rem; font-weight: 900; letter-spacing: -0.02em; color: var(--foreground); }
+    .nav-logo-text span { color: var(--primary); }
+    .nav-links { display: none; gap: 0.25rem; }
+    @media (min-width: 640px) { .nav-links { display: flex; } }
+    .nav-link { padding: 0.375rem 0.75rem; border-radius: 6px; font-size: 0.875rem; font-weight: 500; color: var(--muted-foreground); text-decoration: none; }
+    .nav-link:hover { color: var(--foreground); text-decoration: none; }
+    .nav-cta { padding: 0.375rem 1rem; border-radius: 6px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); font-size: 0.875rem; font-weight: 700; color: #000; text-decoration: none; }
+    main { padding-top: 56px; }
+    section { padding: 6rem 1rem; max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 900; line-height: 1.05; letter-spacing: -0.03em; margin-bottom: 1.5rem; }
+    h2 { font-size: clamp(1.75rem, 3.5vw, 2.5rem); font-weight: 900; line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 1rem; margin-top: 3rem; }
+    h3 { font-size: 1.05rem; font-weight: 700; color: var(--foreground); margin-bottom: 0.375rem; }
+    p { color: var(--muted-foreground); margin-bottom: 1rem; }
+    .text-primary { color: var(--primary); }
+    .eyebrow { display: inline-flex; align-items: center; gap: 0.5rem; border: 1px solid rgba(163,230,53,0.2); background: rgba(163,230,53,0.05); border-radius: 999px; padding: 0.25rem 1rem; font-size: 0.875rem; font-weight: 600; color: var(--primary); margin-bottom: 1.5rem; }
+    .lead { font-size: 1.125rem; color: var(--muted-foreground); max-width: 600px; margin-bottom: 2rem; }
+    .btn-primary { display: inline-flex; align-items: center; gap: 0.5rem; padding: 1rem 2rem; border-radius: 8px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); font-size: 0.875rem; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.08em; text-decoration: none; margin-bottom: 4rem; }
+    .btn-primary:hover { opacity: 0.9; text-decoration: none; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+    .card { border: 1px solid var(--border); border-radius: 12px; background: var(--card); padding: 1.5rem; transition: border-color 0.15s; }
+    .card:hover { border-color: rgba(163,230,53,0.3); }
+    .objection-card { border-left: 2px solid var(--primary); border-radius: 0 12px 12px 0; background: var(--card); padding: 1rem 1.5rem; margin: 1rem 0; border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .objection-card strong { display: block; color: var(--foreground); font-size: 1rem; margin-bottom: 0.25rem; }
+    .x-list { list-style: none; display: flex; flex-direction: column; gap: 0.75rem; margin: 1.5rem 0 2rem; }
+    .x-list li { display: flex; align-items: center; gap: 0.75rem; color: var(--muted-foreground); font-size: 1rem; }
+    .x-list li::before { content: "✕"; color: var(--destructive); font-weight: 900; flex-shrink: 0; }
+    .faq { border-top: 1px solid var(--border); margin-top: 2rem; }
+    .faq-item { border-bottom: 1px solid var(--border); padding: 1.5rem 0; }
+    .faq-item h3 { color: var(--primary); margin-bottom: 0.5rem; font-size: 1rem; }
+    .faq-item p { margin: 0; }
+    footer { border-top: 1px solid var(--border); padding: 3rem 1rem; }
+    .footer-inner { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 2rem; }
+    @media (min-width: 640px) { .footer-inner { flex-direction: row; justify-content: space-between; } }
+    .footer-brand { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; text-decoration: none; }
+    .footer-brand-text { font-size: 0.875rem; font-weight: 900; color: var(--foreground); }
+    .footer-brand-text span { color: var(--primary); }
+    .footer-cols { display: flex; flex-wrap: wrap; gap: 2rem 3rem; }
+    .footer-col-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted-foreground); margin-bottom: 0.75rem; }
+    .footer-col a { display: block; font-size: 0.875rem; color: var(--muted-foreground); margin-bottom: 0.5rem; text-decoration: none; }
+    .footer-col a:hover { color: var(--foreground); }
+    .footer-bottom { max-width: 1100px; margin: 1.5rem auto 0; padding-top: 1.5rem; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.75rem; color: var(--muted-foreground); }
+    @media (min-width: 640px) { .footer-bottom { flex-direction: row; justify-content: space-between; } }
+    .footer-bottom a { color: var(--muted-foreground); text-decoration: none; margin-right: 1rem; }
+  </style>
+</head>
+<body>
+
+<nav class="top">
+  <a href="https://closerlab.io" class="nav-logo">
+    <div class="nav-logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+    <span class="nav-logo-text">CLOSER<span>LAB</span></span>
+  </a>
+  <div class="nav-links">
+    <a href="https://closerlab.io/#how-it-works" class="nav-link">How It Works</a>
+    <a href="https://closerlab.io/#pricing" class="nav-link">Pricing</a>
+  </div>
+  <a href="https://closerlab.io/auth" class="nav-cta">Start Free</a>
+</nav>
+
+<main>
+  <section>
+    <span class="eyebrow">📞 Cold Call Simulator</span>
+    <h1>Cold Call Practice That<br /><span class="text-primary">Actually Feels Real</span></h1>
+    <p class="lead">The AI doesn't say yes. It says "who gave you this number?" and "I'm happy with what we have." It interrupts. It challenges. It makes you earn the meeting — exactly like the real thing.</p>
+    <a href="https://closerlab.io/auth" class="btn-primary">Practice Free →</a>
+
+    <h2>Why Most Reps Practice On Real Prospects</h2>
+    <ul class="x-list">
+      <li>You hesitate under pressure and lose the frame</li>
+      <li>You justify price before they even objected</li>
+      <li>You "wing it" and hope for the best</li>
+      <li>Every mistake costs you a real opportunity</li>
+    </ul>
+    <p>CloserLab lets you do the reps without the risk. Practice on AI buyers that respond like real people, so when you pick up the phone for real, you've already handled every objection a dozen times.</p>
+
+    <h2>The Objections You'll Face</h2>
+    <div class="objection-card"><strong>"We're happy with what we have."</strong><p>The most common cold call killer. Practice reframing without being pushy.</p></div>
+    <div class="objection-card"><strong>"Just send me an email."</strong><p>The polite brush-off. Learn to stay on the call without sounding desperate.</p></div>
+    <div class="objection-card"><strong>"We don't have budget right now."</strong><p>Budget objections in the first 30 seconds. Handle them without cutting price.</p></div>
+    <div class="objection-card"><strong>"Who gave you my number?"</strong><p>The hostile opener. Practice staying calm and professional when it starts rough.</p></div>
+    <div class="objection-card"><strong>"I only have 2 minutes."</strong><p>Time pressure from the start. Get to value fast without skipping the rapport.</p></div>
+
+    <h2>How the Simulator Works</h2>
+    <div class="grid-3">
+      <div class="card"><h3>Pick Your Scenario</h3><p>Choose industry, buyer persona, and difficulty. The AI adapts and behaves like a realistic prospect from that world.</p></div>
+      <div class="card"><h3>Start the Call</h3><p>The AI picks up with a natural opener. From there it's live — it responds to what you actually say, not a script.</p></div>
+      <div class="card"><h3>Get Scored</h3><p>After the call: Objection Handling, Confidence, Framing, Closing Attempt, Clarity. Know exactly what to fix next rep.</p></div>
+    </div>
+
+    <h2>Meeting Setter Mode</h2>
+    <p>CloserLab has a dedicated <strong style="color:var(--foreground);">Meeting Setter mode</strong> built specifically for cold call practice. The prospect picks up cold, your only goal is to book a meeting, and you're scored on Speed to Value, Clarity of Ask, and Booking Attempt.</p>
+
+    <h2>Voice or Text</h2>
+    <p>Practice via text to focus purely on your words, or use <strong style="color:var(--foreground);">Realtime AI Voice</strong> (Pro) to speak out loud with an AI that talks back. Voice mode is where the real muscle memory comes from — because the actual call is always voice.</p>
+
+    <h2>Frequently Asked Questions</h2>
+    <div class="faq">
+      <div class="faq-item"><h3>Is this just a chatbot?</h3><p>No. The AI is purpose-built to simulate buyer psychology — skepticism, time pressure, budget constraints. It doesn't follow a script and adapts to everything you say.</p></div>
+      <div class="faq-item"><h3>What industries can I practice for?</h3><p>SaaS, real estate, recruiting, consulting, e-commerce, agency, healthcare, coaching, and more. You can also write a custom buyer description for your specific niche.</p></div>
+      <div class="faq-item"><h3>How many practice calls can I do?</h3><p>Free users get simulations to get started. Pro users get unlimited simulations and 45 minutes of voice AI calls per day.</p></div>
+      <div class="faq-item"><h3>Can I practice with my actual voice?</h3><p>Yes — CloserLab Pro includes Realtime AI Voice. You speak, the AI talks back in real time. The closest thing to a real cold call without it being one.</p></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <a href="https://closerlab.io" class="footer-brand">
+        <div class="nav-logo-icon" style="width:24px;height:24px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+        <span class="footer-brand-text">CLOSER<span>LAB</span></span>
+      </a>
+      <p style="font-size:0.75rem;color:var(--muted-foreground);margin:0;">Train harder. Close faster.</p>
+    </div>
+    <div class="footer-cols">
+      <div class="footer-col"><p class="footer-col-label">Product</p><a href="https://closerlab.io/#how-it-works">How It Works</a><a href="https://closerlab.io/#pricing">Pricing</a><a href="https://closerlab.io/auth">Sign Up</a></div>
+      <div class="footer-col"><p class="footer-col-label">Training</p><a href="https://closerlab.io/sales-training">Sales Training</a><a href="https://closerlab.io/cold-call-practice">Cold Call Practice</a><a href="https://closerlab.io/ai-sales-coach">AI Sales Coach</a><a href="https://closerlab.io/sdr-training">SDR Training</a></div>
+      <div class="footer-col"><p class="footer-col-label">Legal</p><a href="https://closerlab.io/privacy">Privacy</a><a href="https://closerlab.io/terms">Terms</a><a href="https://closerlab.io/dpa">DPA</a></div>
+    </div>
+  </div>
+  <div class="footer-bottom"><p>© 2025 CloserLab. All rights reserved.</p><div><a href="https://closerlab.io/privacy">Privacy</a><a href="https://closerlab.io/terms">Terms</a><a href="https://closerlab.io/dpa">DPA</a></div></div>
+</footer>
+
+</body>
+</html>

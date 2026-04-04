@@ -2,5 +2,11 @@
   "routes": [
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
+  ],
+    "rewrites": [
+    { "source": "/ai-sales-coach", "destination": "/ai-sales-coach.html" },
+    { "source": "/cold-call-practice", "destination": "/cold-call-practice.html" },
+    { "source": "/sales-training", "destination": "/sales-training.html" },
+    { "source": "/sdr-training", "destination": "/sdr-training.html" }
   ]
 }
