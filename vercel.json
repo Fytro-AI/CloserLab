@@ -1,12 +1,9 @@
 {
-  "routes": [
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
-  ],
-    "rewrites": [
+  "rewrites": [
     { "source": "/ai-sales-coach", "destination": "/Ai-Sales-Coach.html" },
     { "source": "/cold-call-practice", "destination": "/Cold-Call-Practice.html" },
     { "source": "/sales-training", "destination": "/Sales-Training.html" },
-    { "source": "/sdr-training", "destination": "/SDR-Training.html" }
+    { "source": "/sdr-training", "destination": "/SDR-Training.html" },
+    { "source": "/((?!.*\\.).*)", "destination": "/index.html" }
   ]
 }
