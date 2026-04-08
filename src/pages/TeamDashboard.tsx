@@ -266,7 +266,7 @@ function MemberRow({ member, stat, isOwner, isMe, onRemove, onRoleChange }: {
 const MEMBERS_PER_PAGE = 10;
 
 /* ─── MAIN ─── */
-export default function TeamDashBoard() {
+export default function TeamDashboard() {
   const { user } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
 
