@@ -22,7 +22,7 @@ import LiveCallPage from "./pages/LiveCallPage";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 import Metrics from "./pages/Metrics";
-import TeamDashboard from "./pages/TeamDashBoard";
+import TeamDashBoard from "./pages/TeamDashBoard";
 import JoinTeam from "./pages/JoinTeam";
 
 const queryClient = new QueryClient();
@@ -73,7 +73,7 @@ function AppRoutes() {
                   <Route path="/live-call"  element={<ComingSoon />} />
                   <Route path="/coming-soon" element={<ComingSoon />} />
                   <Route path="/metrics"    element={<Metrics />} />
-                  <Route path="/team"       element={<TeamDashboard />} />
+                  <Route path="/team"       element={<TeamDashBoard />} />
                   <Route path="*"           element={<NotFound />} />
                   <Route path="/join/:token" element={<JoinTeam />} />
                 </Routes>
