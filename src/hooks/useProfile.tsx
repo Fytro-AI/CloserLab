@@ -19,6 +19,8 @@ export interface Profile {
   week_start: string | null;
   last_call_date: string | null;
   subscription_tier?: "starter" | "pro" | null;
+  team_id: string;
+  team_role: string;
 }
 
 export function useProfile() {

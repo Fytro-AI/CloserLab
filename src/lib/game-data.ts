@@ -69,6 +69,6 @@ export function calculateXP(
   return xp;
 }
 
-export function calculateLevel(xp: number): number {
-  return Math.floor(xp / 200) + 1;
-}
+// export function calculateLevel(xp: number): number {
+//   return Math.floor(xp / 200) + 1;
+// }

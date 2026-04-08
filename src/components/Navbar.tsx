@@ -2,7 +2,12 @@ import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
 import {
   Zap, Target, Trophy, CreditCard, History,
-  User2Icon, Phone, Building2, ChevronLeft, ChevronRight,
+  User2Icon, Phone, Building2, ChevronLeft, ChevronRight, Users,
+  GitGraph,
+  TrendingUpIcon,
+  TrendingUp,
+  LayoutDashboard,
+  BarChart3,
 } from "lucide-react";
 import { getRank } from "@/lib/game-data";
 import { useProfile } from "@/hooks/useProfile";
@@ -27,24 +32,24 @@ export default function Navbar() {
   if (!user || location.pathname === "/landing") return null;
 
   const xp = profile?.xp ?? 0;
-  const rank = getRank(xp);
+  // const rank = getRank(xp);
 
   const NAV_ITEMS: NavItem[] = [
-    { path: "/",            label: "Dashboard",  icon: Target },
-    { path: "/scenarios",   label: "Train",      icon: Zap },
-    { path: "/history",     label: "History",    icon: History },
-    { path: "/leaderboard", label: "Ranks",      icon: Trophy },
-    { path: "/pricing",     label: "Pro",        icon: CreditCard },
-    { path: "/company",     label: "My Company", icon: Building2 },
+    { path: "/",            label: "Dashboard",  icon: LayoutDashboard },
+    { path: "/scenarios",   label: "Roleplay",      icon: Zap },
     { path: "/coming-soon", label: "Live Call",  icon: Phone, soon: true },
+    { path: "/metrics", label: "Metrics", icon: BarChart3 },
+    { path: "/history",     label: "History",    icon: History },
+    { path: "/pricing",     label: "Pro",        icon: CreditCard },
+    { path: "/team",        label: "Team",       icon: Users },
   ];
 
   // Bottom tab items — show the 5 most important on mobile
   const BOTTOM_TABS: NavItem[] = [
-    { path: "/",          label: "Home",    icon: Target },
-    { path: "/scenarios", label: "Train",   icon: Zap },
-    { path: "/leaderboard", label: "Ranks", icon: Trophy },
-    { path: "/pricing",   label: "Pro",     icon: CreditCard },
+    { path: "/",          label: "Home",    icon: LayoutDashboard },
+    { path: "/scenarios", label: "Roleplay",   icon: Zap },
+    { path: "/metrics", label: "Metrics", icon: BarChart3 },
+    { path: "/team",      label: "Team",    icon: Users },
     { path: "/account",   label: "Account", icon: User2Icon },
   ];
 
@@ -69,9 +74,9 @@ export default function Navbar() {
           </Link>
           <div className="flex items-center gap-2">
             <span className="text-sm font-mono font-bold text-accent">{xp} XP</span>
-            <Link to="/account" className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-base">
+            {/* <Link to="/account" className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-base">
               {rank.icon}
-            </Link>
+            </Link> */}
           </div>
         </header>
 
@@ -170,18 +175,18 @@ export default function Navbar() {
               className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-secondary/50 transition-colors"
             >
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary flex-shrink-0 text-base">
-                {rank.icon}
+                {profile?.name?.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-bold text-foreground truncate">{profile?.name ?? "Closer"}</p>
-                <p className="text-xs text-muted-foreground font-mono">{xp.toLocaleString()} XP · {rank.name}</p>
+                <p className="text-xs text-muted-foreground font-mono">{xp.toLocaleString()} XP · {/* {rank.name}*/} </p>
               </div>
               <User2Icon className="h-3.5 w-3.5 text-muted-foreground/50 flex-shrink-0" />
             </Link>
           ) : (
             <Link to="/account" title="Account" className="flex items-center justify-center w-full py-1 rounded-lg hover:bg-secondary/50 transition-colors">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-base">
-                {rank.icon}
+                NIU
               </div>
             </Link>
           )}

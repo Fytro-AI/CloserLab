@@ -5,8 +5,9 @@ import SkillBar from "@/components/SkillBar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
-import { calculateXP, calculateLevel } from "@/lib/game-data";
+import { calculateXP } from "@/lib/game-data";
 import { useChallengeCompletions } from "@/hooks/useChallengeCompletions";
+import { useCallRecorder } from "@/hooks/useCallRecorder";
 
 interface Scores {
   overall_score: number;
@@ -60,6 +61,8 @@ export default function Breakdown() {
   const [error, setError] = useState<string | null>(null);
   const [xpEarned, setXpEarned] = useState(0);
   const savedRef = useRef(false);
+  const { uploadRecording } = useCallRecorder();
+  const audioBlob = location.state?.audioBlob as Blob | undefined;
 
   useEffect(() => {
     if (transcript.length === 0) {
@@ -123,24 +126,35 @@ export default function Breakdown() {
   const saveResults = async (data: Scores, earned: number) => {
     if (!user || !profile) return;
 
-    await supabase.from("call_history").insert({
-      user_id: user.id,
-      industry,
-      difficulty,
-      persona,
-      duration,
-      overall_score: data.overall_score,
-      confidence_score: data.confidence_score,
-      objection_handling_score: data.objection_handling_score,
-      clarity_score: data.clarity_score,
-      closing_score: data.closing_score,
-      strengths: data.strengths,
-      weaknesses: data.weaknesses,
-      missed_opportunities: data.missed_opportunities,
-      improvement_tip: data.improvement_tip,
-      xp_earned: earned,
-      transcript,
-    });
+    const { data: insertedCall } = await supabase
+      .from("call_history")
+      .insert({
+        user_id: user.id,
+        industry,
+        difficulty,
+        persona,
+        duration,
+        overall_score: data.overall_score,
+        confidence_score: data.confidence_score,
+        objection_handling_score: data.objection_handling_score,
+        clarity_score: data.clarity_score,
+        closing_score: data.closing_score,
+        strengths: data.strengths,
+        weaknesses: data.weaknesses,
+        missed_opportunities: data.missed_opportunities,
+        improvement_tip: data.improvement_tip,
+        xp_earned: earned,
+        transcript,
+      })
+      .select("id")
+      .single();
+
+    if (audioBlob && insertedCall?.id) {
+      // Fire and forget — don't block the UI
+      uploadRecording(audioBlob, insertedCall.id).then((path) => {
+        if (path) console.log("Recording saved:", path);
+      });
+    }
 
     const newXp = profile.xp + earned;
     const today = new Date().toISOString().split("T")[0];
@@ -173,7 +187,6 @@ export default function Breakdown() {
 
     await supabase.from("profiles").update({
       xp: newXp,
-      level: calculateLevel(newXp),
       streak: newStreak,
       calls_completed: profile.calls_completed + 1,
       skill_objection_handling: blend(profile.skill_objection_handling, data.objection_handling_score),

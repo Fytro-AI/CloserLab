@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { PhoneOff, Mic, MicOff, Volume2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PERSONAS } from "@/lib/game-data";
+import { useCallRecorder } from "@/hooks/useCallRecorder";
 
 interface RealtimeCallProps {
   persona: string;
@@ -15,7 +16,10 @@ interface RealtimeCallProps {
   prospectBackstory?: string;
   challengeSystemPrompt?: string;
   customIndustryDescription?: string;
-  onEndCall: (transcript: { role: "user" | "assistant"; content: string }[]) => void;
+  onEndCall: (
+    transcript: { role: "user" | "assistant"; content: string }[],
+    audioBlob?: Blob | null
+  ) => void;
 }
 
 type ConnectionStatus = "connecting" | "connected" | "error" | "ended";
@@ -75,6 +79,7 @@ export default function RealtimeCall({
   const spotTimerRef = useRef<number | null>(null);
   const spotPoolRef = useRef<HTMLAudioElement[]>([]);
   const silenceTimerRef = useRef<number | null>(null);
+  const { startRecording, stopRecording } = useCallRecorder();
 
   // ── Timer ──
   useEffect(() => {
@@ -194,6 +199,9 @@ export default function RealtimeCall({
   const handleEndCall = useCallback(async (transcriptOverride?: typeof transcript) => {
     if (callEndedRef.current) return;
     callEndedRef.current = true;
+
+    const audioBlob = await stopRecording();
+
     try {
       const hangup = new Audio("https://pgzjqdlsvjuuimfrnbzv.supabase.co/storage/v1/object/public/ambients/178537__kyliank__phone-hang-up-suspend.mp3");
       hangup.volume = 1.0;
@@ -206,8 +214,8 @@ export default function RealtimeCall({
     if (minutesUsed > 0) {
       await supabase.functions.invoke("track-voice-usage", { body: { minutesUsed } });
     }
-    onEndCall(finalTranscript);
-  }, [cleanup, elapsed, onEndCall, transcript]);
+    onEndCall(finalTranscript, audioBlob);
+  }, [cleanup, elapsed, onEndCall, stopRecording, transcript]);
 
   const handleDataChannelMessage = useCallback((event: MessageEvent) => {
     try {
@@ -267,15 +275,12 @@ export default function RealtimeCall({
 
       startDialTone();
 
-      // ── Pass simulationMode + interview fields to the edge function ──
       const tokenResp = await supabase.functions.invoke("realtime-token", {
         body: {
           simulationMode,
           difficulty,
-          // Interview fields
           interviewRole,
           interviewCompany,
-          // Buyer/prospect fields (ignored for interview mode)
           persona,
           industry,
           prospectName,
@@ -293,6 +298,7 @@ export default function RealtimeCall({
       const ephemeralKey = tokenResp.data.client_secret.value;
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       localStreamRef.current = stream;
+      startRecording(stream);
 
       const pc = new RTCPeerConnection();
       pcRef.current = pc;
@@ -370,7 +376,6 @@ export default function RealtimeCall({
     }
   };
 
-  // ── Interview UI labels ──
   const callerName = isInterview ? (interviewCompany || "Interviewer") : (prospectName || personaData.label);
   const callerSub  = isInterview ? `${interviewRole || "Sales"} Interview` : (prospectCompany || "Prospect");
   const speakingLabel = isInterview ? "Interviewer is speaking..." : `${prospectName || "Prospect"} is speaking...`;

@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { Analytics } from "@vercel/analytics/react";
 import Navbar from "@/components/Navbar";
+import TeamGate from "@/components/TeamGate";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -18,9 +19,11 @@ import CallHistory from "./pages/CallHistory";
 import Pricing from "./pages/Pricing";
 import Account from "./pages/Account";
 import LiveCallPage from "./pages/LiveCallPage";
-import CompanySettings from "./pages/CompanySettings";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
+import Metrics from "./pages/Metrics";
+import TeamDashboard from "./pages/TeamDashBoard";
+import JoinTeam from "./pages/JoinTeam";
 
 const queryClient = new QueryClient();
 
@@ -39,34 +42,44 @@ function AppRoutes() {
   const { user } = useAuth();
   const location = useLocation();
 
-  // Hide sidebar on landing and auth pages
   const hideSidebar = !user
     || location.pathname === "/landing"
     || location.pathname === "/auth";
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Sidebar renders itself as position:fixed + injects a spacer div */}
       {!hideSidebar && <Navbar />}
 
-      {/* Page content fills remaining width. pb-[60px] clears mobile bottom tab bar */}
       <main className="flex-1 min-w-0 overflow-y-auto pb-[60px] md:pb-0">
         <Routes>
+          {/* Public */}
           <Route path="/landing" element={<Landing />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/scenarios" element={<ProtectedRoute><Scenarios /></ProtectedRoute>} />
-          <Route path="/challenges" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />
-          <Route path="/simulation" element={<ProtectedRoute><Simulation /></ProtectedRoute>} />
-          <Route path="/breakdown" element={<ProtectedRoute><Breakdown /></ProtectedRoute>} />
-          <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
-          <Route path="/history" element={<ProtectedRoute><CallHistory /></ProtectedRoute>} />
-          <Route path="/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
-          <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
-          <Route path="/live-call" element={<ProtectedRoute><LiveCallPage /></ProtectedRoute>} />
-          <Route path="/company" element={<ProtectedRoute><CompanySettings /></ProtectedRoute>} />
-          <Route path="/coming-soon" element={<ProtectedRoute><ComingSoon /></ProtectedRoute>} />
-          <Route path="*" element={<NotFound />} />
+          <Route path="/auth"    element={<Auth />} />
+
+          {/* Protected — all gated behind TeamGate */}
+          <Route path="/*" element={
+            <ProtectedRoute>
+              <TeamGate>
+                <Routes>
+                  <Route path="/"           element={<Dashboard />} />
+                  <Route path="/scenarios"  element={<Scenarios />} />
+                  <Route path="/challenges" element={<Challenges />} />
+                  <Route path="/simulation" element={<Simulation />} />
+                  <Route path="/breakdown"  element={<Breakdown />} />
+                  <Route path="/leaderboard" element={<Leaderboard />} />
+                  <Route path="/history"    element={<CallHistory />} />
+                  <Route path="/pricing"    element={<Pricing />} />
+                  <Route path="/account"    element={<Account />} />
+                  <Route path="/live-call"  element={<ComingSoon />} />
+                  <Route path="/coming-soon" element={<ComingSoon />} />
+                  <Route path="/metrics"    element={<Metrics />} />
+                  <Route path="/team"       element={<TeamDashboard />} />
+                  <Route path="*"           element={<NotFound />} />
+                  <Route path="/join/:token" element={<JoinTeam />} />
+                </Routes>
+              </TeamGate>
+            </ProtectedRoute>
+          } />
         </Routes>
       </main>
     </div>

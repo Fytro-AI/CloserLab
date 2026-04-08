@@ -6,7 +6,7 @@ import { useProfile } from "@/hooks/useProfile";
 const PRICES = {
   starter_monthly: "price_1T9rpNPNpQaZotKHqrLD9fnS",
   starter_yearly:  "price_1T9rrSPNpQaZotKHNxsyxpAD",
-  pro_monthly:     "price_1TFyHMPNpQaZotKH7JxiFjOG",
+  pro_monthly:     "price_1T9rx3PNpQaZotKHzAmrOT3F",
   pro_yearly:      "price_1T9s39PNpQaZotKHp1Ji6V5m",
 };
 
@@ -52,7 +52,7 @@ const PLANS = [
   {
     id: "pro",
     name: "Pro",
-    monthlyPrice: "€24.99",
+    monthlyPrice: "€29.99",
     yearlyPrice: "€251",
     period: "/month",
     description: "Real-time AI voice calls. Train like it's the real thing.",

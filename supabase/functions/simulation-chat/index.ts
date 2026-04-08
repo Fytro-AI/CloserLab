@@ -11,7 +11,7 @@ const VALID_PERSONAS = ["skeptical", "aggressive", "distracted", "budget", "time
 const VALID_DIFFICULTIES = ["easy", "medium", "hard", "nightmare"];
 const VALID_INDUSTRIES = [
   "saas", "plumbing", "coaching", "ecommerce", "agency",
-  "macro-intelligence", "real-estate", "recruiting", "consulting",
+  "macro-intelligence", "real-estate", "recruiting", "consulting", "healthcare",
 ];
 
 const MAX_MESSAGES_FOR_MODEL = 28;
@@ -78,83 +78,67 @@ Typical objections:
 - "What's your uptime SLA?"
 You think in terms of seats, annual contracts, and total cost of ownership.`,
 
-  "macro-intelligence": `You are a senior financial analyst evaluating macro intelligence subscriptions for your firm.
-You are skeptical of vendors and care about data accuracy, macroeconomic forecasting reliability, and institutional credibility.
-Your concerns: data differentiation, predictive accuracy, compliance, integration with Bloomberg Terminal.
+  "macro-intelligence": `You are a senior financial analyst evaluating macro intelligence subscriptions.
+Your concerns: data accuracy, forecasting reliability, Bloomberg integration.
 Typical objections:
 - "How is your data different from Bloomberg or Refinitiv?"
-- "How reliable are your macro forecasts historically? Show me backtested results."
+- "Show me backtested results."
 - "What unique signals do you provide that we can't get elsewhere?"
-- "Our compliance team needs to vet any new data vendor. What's your track record?"
-- "At this price point, I need to see alpha generation proof."
-You speak in financial jargon. You're analytical, data-driven, and unimpressed by marketing speak.`,
+You speak in financial jargon. Unimpressed by marketing speak.`,
 
   "real-estate": `You are a real estate broker or investor evaluating a service or tool.
 Your concerns: deal flow, market data accuracy, closing speed, commission impact.
 Typical objections:
 - "I've been doing this 15 years. Why do I need your tool?"
-- "How does this help me close more deals, specifically?"
 - "My CRM already does most of this."
-- "Real estate is relationship-driven. Tech doesn't replace that."
-- "What's the ROI per closed deal?"
-You're practical, relationship-focused, and results-oriented. You've seen many PropTech pitches fail.`,
+- "What's the ROI per closed deal?"`,
 
-  recruiting: `You are a VP of Talent or Head of Recruiting evaluating a recruiting tool or staffing service.
+  recruiting: `You are a VP of Talent evaluating a recruiting tool or staffing service.
 Your concerns: time-to-hire, candidate quality, cost-per-hire, ATS integration.
 Typical objections:
 - "We already have LinkedIn Recruiter and an ATS."
-- "How is this different from every other recruiting platform?"
-- "We tried outsourcing recruiting before. Quality was terrible."
 - "Can you guarantee candidate quality?"
-- "Our hiring is seasonal. I can't commit to an annual contract."
-You measure everything in metrics: time-to-fill, quality-of-hire, cost-per-hire.`,
+- "Our hiring is seasonal. I can't commit to an annual contract."`,
 
-  consulting: `You are a C-suite executive evaluating a consulting engagement or advisory service.
-Your concerns: ROI of consulting spend, consultant quality, measurable deliverables, timeline.
+  consulting: `You are a C-suite executive evaluating a consulting engagement.
+Your concerns: ROI, measurable deliverables, not just frameworks.
 Typical objections:
 - "We've hired consultants before. They delivered a nice deck and left."
-- "What makes your firm different from McKinsey / Deloitte / boutique competitors?"
 - "I need measurable outcomes, not frameworks."
-- "Your day rate is steep. Justify it."
-- "How do you transfer knowledge so we're not dependent on you?"
-You're experienced, strategic, and have a low tolerance for fluff. You want skin in the game.`,
+- "Your day rate is steep. Justify it."`,
 
-  ecommerce: `You are a DTC brand founder or e-commerce director evaluating a product or service.
-Your concerns: conversion rate impact, ROAS, customer acquisition cost, integration with Shopify/WooCommerce.
+  ecommerce: `You are a DTC brand founder evaluating a product or service.
+Your concerns: ROAS, CAC, Shopify integration.
 Typical objections:
-- "We already run Facebook and Google Ads. What's the incremental lift?"
 - "Our margins are thin. Every dollar counts."
 - "Can you prove this increases conversion rate?"
-- "We've been burned by agencies promising ROAS they couldn't deliver."
-You think in terms of CAC, LTV, AOV, and contribution margin.`,
+- "We've been burned by agencies before."`,
 
-  agency: `You are a business owner evaluating a marketing agency for a retainer.
-Your concerns: ROI on marketing spend, creative quality, reporting transparency, contract flexibility.
+  agency: `You are a business owner evaluating a marketing agency.
+Your concerns: ROI, reporting transparency, contract flexibility.
 Typical objections:
 - "What ROI can you prove from past clients?"
-- "How is this better than hiring an in-house marketer?"
-- "Your retainer is $5k/month. What exactly do I get?"
-- "Last agency we hired just burned through budget with nothing to show."
-You want accountability, not vague promises about "brand awareness."`,
+- "Last agency we hired just burned through budget with nothing to show."`,
 
   coaching: `You are a professional considering a high-ticket coaching program.
-Your concerns: credibility of the coach, tangible outcomes, time commitment, price justification.
+Your concerns: credibility, tangible outcomes, time commitment.
 Typical objections:
 - "There are a million coaches out there. What makes you different?"
-- "Can you guarantee results?"
-- "That's a lot of money for coaching. I could hire a consultant instead."
-- "I don't have time for weekly calls on top of my schedule."
-You're interested but guarded. You've seen too many gurus with no substance.`,
+- "Can you guarantee results?"`,
 
-  plumbing: `You are a homeowner or property manager evaluating a plumbing service.
-Your concerns: pricing transparency, reliability, warranties, scheduling.
+  plumbing: `You are a homeowner evaluating a plumbing service.
+Your concerns: pricing transparency, reliability, warranties.
 Typical objections:
-- "The last plumber overcharged me. How do I know you won't?"
-- "Can you give me a firm quote, not an estimate?"
-- "How quickly can you get someone out?"
-- "Do you guarantee your work?"
-- If the seller asks "Can I have x seconds?", you can SOMETIMES reply "No you can't ..."
-You're practical, price-sensitive, and have been burned before. You want someone trustworthy.`,
+- "The last plumber overcharged me."
+- "Can you give me a firm quote, not an estimate?"`,
+
+  healthcare: `You are a VP of Sales or SDR Team Leader at a healthcare company.
+Your concerns: rep ramp time, cold call quality, first-meeting conversion rate.
+Typical objections:
+- "Our reps already get trained during onboarding."
+- "Prospects in healthcare are too busy for long calls."
+- "I need something that ties to meetings booked, not just confidence scores."
+You think in ramp time, meetings booked per rep per week, pipeline velocity. Slammed, skeptical of vendor pitches.`,
 };
 
 function clampText(value: unknown, maxChars: number): string {
@@ -180,26 +164,18 @@ function compactMessages(messages: ChatMessage[]): ChatMessage[] {
 }
 
 function buildSellerMemory(messages: ChatMessage[]): string {
+  // Take ALL seller messages and summarize what we know — much broader than before
   const sellerLines = messages
     .filter((m) => m.role === "user")
-    .map((m) => clampText(m.content, 220));
+    .map((m) => clampText(m.content, 300));
 
-  const identity = sellerLines
-    .filter((line) => /\b(i am|i'm|this is|my name is|i work at|we are)\b/i.test(line))
-    .slice(0, 3);
+  if (sellerLines.length === 0) return "";
 
-  const offer = sellerLines
-    .filter((line) => /\b(we sell|we help|our product|our platform|our service|we provide|i.?m calling about)\b/i.test(line))
-    .slice(0, 4);
+  // Include all seller messages so the AI has full context of what was actually said
+  return `WHAT THE SELLER HAS ACTUALLY SAID SO FAR (reference ONLY these facts — do NOT invent anything else):
+${sellerLines.map((line, i) => `Turn ${i + 1}: "${line}"`).join("\n")}
 
-  const valueProp = sellerLines
-    .filter((line) => /\b(benefit|roi|save|increase|reduce|improve|faster|cheaper|grow)\b/i.test(line))
-    .slice(0, 3);
-
-  const memoryItems = [...new Set([...identity, ...offer, ...valueProp])];
-  if (memoryItems.length === 0) return "";
-
-  return `KNOWN SELLER CONTEXT (do not forget these details unless corrected):\n- ${memoryItems.join("\n- ")}`;
+CRITICAL: If the seller hasn't mentioned something, assume you don't know it. Ask at most ONE clarifying question if truly needed. Never fabricate seller details.`;
 }
 
 serve(async (req) => {
@@ -232,15 +208,9 @@ serve(async (req) => {
 
     const body = await req.json();
     const {
-      messages,
-      industry,
-      difficulty,
-      persona,
-      prospectName,
-      prospectCompany,
-      prospectBackstory,
-      challengeSystemPrompt,
-      customIndustryDescription,
+      messages, industry, difficulty, persona,
+      prospectName, prospectCompany, prospectBackstory,
+      challengeSystemPrompt, customIndustryDescription,
     } = body;
 
     if (!Array.isArray(messages) || messages.length === 0 || messages.length > 100) {
@@ -250,7 +220,7 @@ serve(async (req) => {
     }
 
     for (const m of messages) {
-      if ( !m.role || !["user", "assistant"].includes(m.role) || typeof m.content !== "string" || m.content.length > 20000) {
+      if (!m.role || !["user", "assistant"].includes(m.role) || typeof m.content !== "string" || m.content.length > 5000) {
         return new Response(JSON.stringify({ error: "Invalid message format" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -268,7 +238,6 @@ serve(async (req) => {
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) {
-      console.error("OPENAI_API_KEY not configured");
       return new Response(JSON.stringify({ error: "Service configuration error" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -283,9 +252,7 @@ serve(async (req) => {
       : "";
 
     const industryContext = safeCustomIndustry
-      ? `CUSTOM INDUSTRY CONTEXT (provided by the seller's description of their typical buyer):
-${safeCustomIndustry}
-Adapt your behavior, objections, and vocabulary to match this industry and buyer profile.`
+      ? `CUSTOM INDUSTRY CONTEXT:\n${safeCustomIndustry}\nAdapt your behavior, objections, and vocabulary to match this buyer profile.`
       : industryPrompt;
 
     const buyerBehavior = safeChallengePrompt || personaPrompt;
@@ -304,42 +271,24 @@ ${buyerBehavior}
 DIFFICULTY LEVEL: ${safeDifficulty.toUpperCase()}
 ${difficultyPrompt}
 
-REALISM RULES (CRITICAL - these make you feel like a REAL buyer, not a chatbot):
-1. NEVER break character. You are a real buyer, not an AI.
-2. NEVER help the seller. Do not coach them or give hints.
-3. Keep responses short. Real buyers don't write essays.
-4. If the seller sends a message longer than 3 sentences, INTERRUPT them. Cut them off mid-point with things like:
-   - "Hold on - back up."
-   - "Wait, what did you just say about [topic]?"
-   - "That's a lot of words. What's the actual point?"
-   - etc.
-5. ASK FOLLOW-UP QUESTIONS like a real buyer would:
-   - "You said [X]. How does that actually work?"
-   - "Give me a specific example."
-   - "Who else in my space uses this?"
-   - etc.
-6. PUSH BACK on vague claims:
-   - "That's marketing speak. Give me numbers."
-   - "Everyone says that. What's different about you?"
-   - "Prove it."
-   - etc.
-7. If the seller provides data or case studies, engage deeper but stay skeptical.
-8. React naturally - don't follow a script. Be unpredictable.
-9. If the seller is doing poorly, get MORE impatient or dismissive. Don't wait politely.
-10. If the seller handles objections well, you can soften SLIGHTLY but never make it easy.
-11. You are evaluating whether to buy - act like a real decision-maker with real money on the line.
-12. Never mention that this is a simulation or training exercise.
-13. If the seller is rude, offensive, uses profanity, or is completely unprofessional, end the call: "I don't have time for this. We're done here." then on a NEW LINE add exactly: [CALL_ENDED]
-14. If you decide to hang up for any reason, add [CALL_ENDED] on the last line.
-15. The seller is calling YOU. Wait for them to introduce themselves and pitch. When you receive the first message, respond naturally as if you just picked up a phone call. NEVER use "Yeah, who's this?" - that line is banned. Instead, pick from a WIDE range of natural openers that match your personality. Examples: "Hello?", "This is ${safeName || "me"}, what's up?", "[Company name] speaking.", "Yep?", "Who am I speaking with?", "Go ahead.", "Hey, what can I do for you?", "Make it quick, I'm in between meetings.", "Talk to me." - but ALWAYS vary it. Never repeat the same opener twice across calls.
-16. Vary your response length dramatically. Sometimes one word ("No.", "Why?", "And?", "Hmm."). Sometimes 2-3 sentences. Occasionally a single skeptical grunt or pause like "..." or "Mm-hmm." Never be predictable in length or tone.
-17. Once the seller shares their identity, company, and what they sell, REMEMBER it for the ENTIRE call. Reference it naturally: "So you said you're from [company]...", "Going back to that [product] thing...". Do NOT repeatedly ask who they are.
-18. Never invent seller details. If context is missing, ask a short clarifying question.
-19. Use the seller's NAME when they share it. Real buyers do this: "Okay [name], but here's my issue..."
-20. Reference SPECIFIC things the seller said earlier in the conversation. Quote them back: "You mentioned [X] earlier - does that mean...?" This makes you feel like a real person who's actually listening.
-21. Your tone and vocabulary should evolve throughout the call based on how well the seller is performing. If they're good, you warm up slightly. If they're bad, you get colder and more dismissive.`;
+CRITICAL RULES — READ ALL OF THESE:
 
-    // ── Step 1: Get buyer response (non-streaming so we can append tip) ──────
+1. NEVER break character. You are a real buyer receiving a sales call.
+2. NEVER help the seller or coach them.
+3. Keep responses SHORT. Real buyers don't monologue.
+4. If the seller sends more than 3 sentences, cut them off: "Hold on.", "Back up.", "What's the point?"
+5. React to what was ACTUALLY SAID. Never invent things the seller said. Never paraphrase or misquote them.
+6. NEVER ask the seller to tell you more about their product more than once. If you already know what they sell, do NOT ask again. Move on to a different objection or question.
+7. Push back on vague claims: "That's marketing speak.", "Prove it.", "Everyone says that."
+8. Be unpredictable. Vary length and tone. Sometimes one word. Sometimes 2-3 sentences.
+9. Never mention this is a simulation or training.
+10. If the seller is rude or uses profanity, end the call and add [CALL_ENDED] on a new line.
+11. If you hang up for any reason, add [CALL_ENDED] on the last line.
+12. The seller is calling YOU. Answer naturally with a varied opener. Never repeat the same opener.
+13. Once you know what the seller sells, NEVER ask again. Reference it naturally instead.
+14. ONLY reference things the seller actually said. If you are unsure, ask ONE short question. Never fabricate seller claims.
+15. Your tone evolves: warm up slightly if they're good, get colder if they're bad.`;
+
     const buyerResp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -356,14 +305,13 @@ REALISM RULES (CRITICAL - these make you feel like a REAL buyer, not a chatbot):
         stream: false,
         max_tokens: 480,
         temperature: 1.05,
-        presence_penalty: 0,
-        frequency_penalty: 0,
+        presence_penalty: 0.2,
+        frequency_penalty: 0.2,
       }),
     });
 
     if (!buyerResp.ok) {
       const status = buyerResp.status;
-      console.error("Buyer AI error:", status, await buyerResp.text());
       if (status === 429) return new Response(JSON.stringify({ error: "Too many requests. Please try again shortly." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       if (status === 402) return new Response(JSON.stringify({ error: "Service temporarily unavailable." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       return new Response(JSON.stringify({ error: "An error occurred. Please try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -372,33 +320,18 @@ REALISM RULES (CRITICAL - these make you feel like a REAL buyer, not a chatbot):
     const buyerData = await buyerResp.json();
     const buyerText = buyerData.choices?.[0]?.message?.content?.trim() ?? "";
 
-    // ── Step 2: Generate coach tip in a separate focused call ────────────────
     let tip = "";
     try {
       const tipResp = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "gpt-4o-mini",
           max_tokens: 60,
           temperature: 0.7,
           messages: [
-            {
-              role: "system",
-              content: `You are a sales coach watching a live sales call. Given the buyer's latest response, write ONE specific coaching tip for the seller on what to say or do next.
-Rules:
-- Start with an action verb (Try, Ask, Acknowledge, Lead with, Pivot, Mirror, etc.)
-- Be specific to what the buyer just said - not generic advice
-- Max 15 words
-- Output ONLY the tip text. No labels, no brackets, no explanation.`,
-            },
-            {
-              role: "user",
-              content: `The buyer just said: "${buyerText.replace(/\[CALL_ENDED\]/g, "").trim()}"`,
-            },
+            { role: "system", content: `You are a sales coach watching a live call. Given the buyer's latest response, write ONE specific coaching tip for the seller. Start with an action verb. Max 15 words. Output ONLY the tip text.` },
+            { role: "user", content: `The buyer just said: "${buyerText.replace(/\[CALL_ENDED\]/g, "").trim()}"` },
           ],
         }),
       });
@@ -408,32 +341,22 @@ Rules:
       console.error("Tip generation failed:", e);
     }
 
-    // ── Step 3: Combine and return as SSE stream ─────────────────────────────
-    const fullText = tip
-      ? `${buyerText}\n[COACH_TIP: ${tip}]`
-      : buyerText;
+    const fullText = tip ? `${buyerText}\n[COACH_TIP: ${tip}]` : buyerText;
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       start(controller) {
-        const payload = JSON.stringify({
-          choices: [{ delta: { content: fullText }, finish_reason: "stop" }],
-        });
+        const payload = JSON.stringify({ choices: [{ delta: { content: fullText }, finish_reason: "stop" }] });
         controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
         controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
         controller.close();
       },
     });
 
-    return new Response(stream, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-    });
+    return new Response(stream, { headers: { ...corsHeaders, "Content-Type": "text/event-stream" } });
 
   } catch (e) {
     console.error("simulation-chat error:", e);
-    return new Response(
-      JSON.stringify({ error: "An error occurred. Please try again." }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "An error occurred. Please try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

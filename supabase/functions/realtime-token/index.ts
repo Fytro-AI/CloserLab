@@ -194,9 +194,7 @@ function buildDiscoveryPrompt(params: {
     : "";
 
   const industryContext = customIndustryDescription
-    ? `CUSTOM INDUSTRY CONTEXT (provided by the seller's description of their typical buyer):
-${customIndustryDescription}
-Adapt your behavior, objections, and vocabulary to match this industry and buyer profile.`
+    ? `CUSTOM INDUSTRY CONTEXT (provided by the seller's description of their typical buyer):\n${customIndustryDescription}\nAdapt your behavior, objections, and vocabulary to match this industry and buyer profile.`
     : industryPrompt;
 
   const buyerBehavior = challengeSystemPrompt || personaPrompt;
@@ -339,11 +337,12 @@ serve(async (req) => {
 
     const { data: profile } = await supabaseClient
       .from("profiles")
-      .select("subscription_tier, daily_voice_minutes, last_voice_date")
+      .select("subscription_tier, is_pro, daily_voice_minutes, last_voice_date")
       .eq("user_id", userData.user.id)
       .single();
 
-    if (profile?.subscription_tier !== "pro") {
+    const hasProAccess = profile?.subscription_tier === "pro" || profile?.is_pro === true;
+    if (!hasProAccess) {
       return new Response(JSON.stringify({ error: "Pro subscription required for voice calls" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -382,7 +381,6 @@ serve(async (req) => {
     const challengeSystemPrompt = clampText(body.challengeSystemPrompt, 2000);
     const customIndustryDescription = clampText(body.customIndustryDescription, 1000);
 
-    // Build the correct prompt based on simulation mode
     const fullInstructions = simulationMode === "meeting-setter"
       ? buildMeetingSetterPrompt({
           persona, industry, difficulty,

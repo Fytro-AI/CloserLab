@@ -58,7 +58,7 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
-    const isProMonthly = priceId === "price_1TFyHMPNpQaZotKH7JxiFjOG";
+    const isProMonthly = priceId === "price_1T9rx3PNpQaZotKHzAmrOT3F";
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,

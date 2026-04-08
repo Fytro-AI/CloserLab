@@ -32,3 +32,9 @@ verify_jwt = false
 
 [functions.simulation-chat-meeting-setter]
 verify_jwt = false
+
+[functions.send-team-invite]
+verify_jwt = false
+ 
+[functions.accept-team-invite]
+verify_jwt = false

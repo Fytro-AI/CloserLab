@@ -7,11 +7,9 @@ const STARTER_PRICE_IDS = [
   "price_1T9rrSPNpQaZotKHNxsyxpAD",
 ];
 const PRO_PRICE_IDS = [
-  "price_1TFyHMPNpQaZotKH7JxiFjOG",
+  "price_1T9rx3PNpQaZotKHzAmrOT3F",
   "price_1T9s39PNpQaZotKHp1Ji6V5m",
 ];
-
-// Inside where you currently do: await supabaseAdmin.from("profiles").update({ is_pro: hasActiveSub })
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,7 +60,8 @@ serve(async (req) => {
     const user = userData.user;
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-        // ── Beta tester check - skip Stripe entirely ──────────────────────────────
+
+    // Beta tester check — skip Stripe entirely
     const { data: profile } = await supabaseAdmin
       .from("profiles")
       .select("is_beta_tester")
@@ -91,17 +90,18 @@ serve(async (req) => {
     }
 
     const customerId = customers.data[0].id;
-    const subscriptions = await stripe.subscriptions.list({
-      customer: customerId,
-      status: "active",
-      limit: 1,
-    });
 
-    const hasActiveSub = subscriptions.data.length > 0;
+    // Include both active AND trialing subscriptions
+    const [activeSubs, trialingSubs] = await Promise.all([
+      stripe.subscriptions.list({ customer: customerId, status: "active", limit: 1 }),
+      stripe.subscriptions.list({ customer: customerId, status: "trialing", limit: 1 }),
+    ]);
+
+    const sub = activeSubs.data[0] ?? trialingSubs.data[0] ?? null;
+    const hasActiveSub = sub !== null;
     let subscriptionEnd = null;
 
     if (hasActiveSub) {
-      const sub = subscriptions.data[0];
       try {
         const endDate = new Date(sub.current_period_end * 1000);
         if (!isNaN(endDate.getTime())) {
@@ -110,7 +110,7 @@ serve(async (req) => {
       } catch (_) {}
     }
 
-    const activePriceId = subscriptions.data[0]?.items?.data[0]?.price?.id;
+    const activePriceId = sub?.items?.data[0]?.price?.id;
     const tier = PRO_PRICE_IDS.includes(activePriceId)
       ? "pro"
       : STARTER_PRICE_IDS.includes(activePriceId)
