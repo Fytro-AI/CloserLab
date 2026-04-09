@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Building2, Users, ArrowRight, Loader2, ChevronDown } from "lucide-react";
 import { useTeam } from "@/hooks/useTeam";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "react-router-dom";
 
 const TEAM_SIZES = [
   { value: "1-5",    label: "1–5 people"    },
@@ -14,13 +15,21 @@ const TEAM_SIZES = [
 
 export default function TeamGate({ children }: { children: React.ReactNode }) {
   const { hasTeam, loading, createTeam } = useTeam();
+  const location = useLocation();
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [size, setSize] = useState("");
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Still loading from DB — spinner, never flash the creation form prematurely
+  // Always let /join/ routes through — JoinTeam handles its own auth/team logic
+  if (location.pathname.startsWith("/join/")) {
+    return <>{children}</>;
+  }
+
+  // Show spinner while loading OR while hasTeam is null (not yet determined).
+  // This prevents the creation form flashing before the DB check completes,
+  // which is what caused invited users to end up creating a second team.
   if (loading || hasTeam === null) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -31,6 +40,7 @@ export default function TeamGate({ children }: { children: React.ReactNode }) {
 
   if (hasTeam) return <>{children}</>;
 
+  // ── No team: show creation form ───────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !size) return;
@@ -48,6 +58,7 @@ export default function TeamGate({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-8 animate-slide-up">
+
         <div className="text-center space-y-4">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl gradient-primary shadow-[0_0_32px_-4px_hsl(var(--primary)/0.4)]">
             <Building2 className="h-7 w-7 text-primary-foreground" />
