@@ -63,7 +63,7 @@ export function useTeam() {
     if (!user) throw new Error("Not authenticated");
 
     // Validate size matches check constraint
-    const validSizes = ["1-5", "5-10", "10-20", "20-50"];
+    const validSizes = ["1-5", "5-10", "10-20", "20-50", "50-100", "100+"];
     if (!validSizes.includes(size)) throw new Error("Invalid team size");
 
     const { data: newTeam, error: teamError } = await supabase

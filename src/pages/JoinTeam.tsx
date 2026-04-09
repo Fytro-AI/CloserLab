@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { Zap, CheckCircle, XCircle, Loader2, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTeam } from "@/hooks/useTeam";
 
 type Phase = "loading" | "confirm" | "joining" | "success" | "error";
 
@@ -10,6 +11,8 @@ export default function JoinTeam() {
   const { token } = useParams<{ token: string }>();
   const navigate   = useNavigate();
   const { user }   = useAuth();
+
+  const { fetchTeam } = useTeam();
 
   const [phase,    setPhase]    = useState<Phase>("loading");
   const [invite,   setInvite]   = useState<{ teamName: string; inviterName: string; email: string } | null>(null);
@@ -76,7 +79,11 @@ export default function JoinTeam() {
       }
 
       setPhase("success");
-      setTimeout(() => navigate("/team"), 2000);
+      // Re-fetch team state so useTeam has hasTeam=true before we navigate.
+      // TeamGate reads from this — without this refresh it stays false and
+      // intercepts the user with the "create a team" form.
+      await fetchTeam();
+      setTimeout(() => navigate("/team"), 1500);
     } catch {
       setPhase("error");
       setErrorMsg("An unexpected error occurred.");
