@@ -337,7 +337,7 @@ serve(async (req) => {
 
     const { data: profile } = await supabaseClient
       .from("profiles")
-      .select("subscription_tier, is_pro, daily_voice_minutes, last_voice_date")
+      .select("subscription_tier, is_pro, monthly_voice_minutes, last_voice_month")
       .eq("user_id", userData.user.id)
       .single();
 
@@ -348,16 +348,13 @@ serve(async (req) => {
       });
     }
 
-    const today = new Date().toISOString().slice(0, 10);
-    if (profile.last_voice_date !== today) {
-      await supabaseClient
-        .from("profiles")
-        .update({ daily_voice_minutes: 0, last_voice_date: today })
-        .eq("user_id", userData.user.id);
-      profile.daily_voice_minutes = 0;
-    }
-    if (profile.daily_voice_minutes >= 45) {
-      return new Response(JSON.stringify({ error: "Daily voice limit reached. Resets at midnight." }), {
+    const currentMonth = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+    const usedThisMonth = profile.last_voice_month === currentMonth
+      ? (profile.monthly_voice_minutes ?? 0)
+      : 0;
+
+    if (usedThisMonth >= 180) {
+      return new Response(JSON.stringify({ error: "Monthly voice limit reached (180 min). Resets on the 1st." }), {
         status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

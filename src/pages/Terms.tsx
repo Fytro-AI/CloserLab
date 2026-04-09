@@ -43,7 +43,7 @@ const SECTIONS = [
         items: [
           "Free - 3 simulation sessions total, text-only",
           "Starter - Unlimited text simulations, all personas, full scoring",
-          "Pro - Everything in Starter plus real-time AI voice calls (45 min/day)",
+          "Pro - Everything in Starter plus real-time AI voice calls (180 min/month)",
         ],
       },
       {

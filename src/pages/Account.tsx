@@ -132,7 +132,7 @@ export default function Account() {
             <>
               <div className="flex items-center gap-2">
                 <Mic className="h-4 w-4 text-primary" />
-                <span>Realtime AI voice calls · 45 min/day</span>
+                <span>Realtime AI voice calls · 180 min/month</span>
               </div>
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-primary" />

@@ -12,63 +12,41 @@ const PRICES = {
 
 const PLANS = [
   {
-    id: "free",
-    name: "Free",
-    monthlyPrice: "€0",
-    yearlyPrice: "€0",
-    period: "forever",
-    description: "Dip your toes in. See if you've got what it takes.",
-    features: [
-      "3 practice calls total",
-      "Text-only simulations",
-      "Basic buyer personas",
-      "Performance scoring",
-    ],
-    cta: "Current Plan",
-    highlighted: false,
-    badge: null,
-    priceId: { monthly: null, yearly: null },
-  },
-  {
-    id: "starter",
-    name: "Starter",
-    monthlyPrice: "€14.99",
-    yearlyPrice: "€125",
-    period: "/month",
-    description: "Unlimited text reps. Build the habit.",
-    features: [
-      "Unlimited text simulations",
-      "All buyer personas",
-      "Full scoring breakdown",
-      "Skill progression & XP",
-      "Post-call analytics",
-      "Custom scenarios",
-    ],
-    cta: "Get Starter",
-    highlighted: false,
-    badge: null,
-    priceId: { monthly: PRICES.starter_monthly, yearly: PRICES.starter_yearly },
-  },
-  {
     id: "pro",
     name: "Pro",
     monthlyPrice: "€29.99",
     yearlyPrice: "€251",
-    period: "/month",
-    description: "Real-time AI voice calls. Train like it's the real thing.",
+    period: "/month per seat",
+    description: "For individual closers & small teams.",
     features: [
-      "Everything in Starter",
-      "🎙️ Realtime AI voice calls",
-      "45 voice calling minutes/day",
-      "Live objection coaching",
-      "Priority AI models",
-      "Weekly coaching reports",
+      "Real-time AI roleplay",
+      "AI call scoring & feedback",
+      "Metrics & insights",
+      "180 roleplay minutes each month per seat",
     ],
     cta: "Go Pro",
     highlighted: true,
-    badge: "Most Popular",
+    badge: false,
     priceId: { monthly: PRICES.pro_monthly, yearly: PRICES.pro_yearly },
     trial: "1-day free trial",
+  },
+  {
+    id: "enterprise",
+    name: "Custom pricing",
+    monthlyPrice: "Enterprise",
+    yearlyPrice: "Enterprise",
+    description: "For teams that want to train together. Contact us for custom plans and pricing.",
+    features: [
+      "Everything in Pro",
+      "Team management dashboard",
+      "Admin controls & permissions",
+      "Team performance analytics",
+      "Custom reporting",
+      "Dedicated support",
+    ],
+    cta: "Contact Us",
+    highlighted: false,
+    badge: null,
   },
 ];
 
@@ -144,13 +122,13 @@ export default function Pricing() {
       </div>
 
       {/* Plans grid */}
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2">
         {PLANS.map((plan) => {
           const isCurrentPro = profile?.is_pro && plan.id === "pro";
           const isCurrentFree = !profile?.is_pro && plan.id === "free";
-          const selectedPriceId = plan.priceId[billingCycle];
+          const selectedPriceId = plan.priceId?.[billingCycle] ?? null;
           const displayPrice = billingCycle === "yearly" ? plan.yearlyPrice : plan.monthlyPrice;
-          const displayPeriod = billingCycle === "yearly" ? "/year" : plan.period;
+          const displayPeriod = billingCycle === "yearly" && plan.id !== "enterprise" ? "/year per seat" : plan.period;
 
           return (
             <div
@@ -185,11 +163,6 @@ export default function Pricing() {
                     <span className="text-muted-foreground text-sm">{displayPeriod}</span>
                   )}
                 </div>
-                {billingCycle === "yearly" && plan.id !== "free" && (
-                  <p className="text-xs text-accent mt-1">
-                    {plan.id === "starter" ? "$10.42/mo billed yearly" : "$20.92/mo billed yearly"}
-                  </p>
-                )}
                 <p className="text-sm text-muted-foreground mt-2">{plan.description}</p>
               </div>
 
@@ -204,7 +177,14 @@ export default function Pricing() {
               </ul>
 
               {/* CTA */}
-              {isCurrentPro ? (
+              {plan.id === "enterprise" ? (
+                <a
+                  href="mailto:niilas.tyni80@gmail.com"
+                  className="w-full rounded-lg py-3 font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 border border-border bg-secondary text-foreground hover:bg-primary/10 hover:border-primary/30"
+                >
+                  Contact Sales
+                </a>
+              ) : isCurrentPro ? (
                 <button
                   onClick={handleManageSubscription}
                   disabled={loadingPlan === "manage"}
@@ -214,41 +194,26 @@ export default function Pricing() {
                     <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                   ) : "Manage Subscription"}
                 </button>
-              ) : isCurrentFree ? (
-                <div className="w-full rounded-lg py-3 font-bold text-sm uppercase tracking-wider text-center border border-border bg-secondary text-muted-foreground">
-                  Current Plan
-                </div>
-              ) : plan.id === "free" ? (
-                <div className="w-full rounded-lg py-3 font-bold text-sm uppercase tracking-wider text-center border border-border bg-secondary text-muted-foreground">
-                  Free Forever
-                </div>
               ) : (
-                <>
-                  <button
-                    onClick={() => handleCheckout(selectedPriceId)}
-                    disabled={!!loadingPlan}
-                    className={`w-full rounded-lg py-3 font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
-                      plan.highlighted
-                        ? "gradient-primary text-primary-foreground hover:opacity-90"
-                        : "border border-border bg-secondary text-foreground hover:bg-primary/10 hover:border-primary/30"
-                    } disabled:opacity-50`}
-                  >
-                    {loadingPlan === selectedPriceId ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Zap className="h-4 w-4" />
-                        {plan.cta}
-                      </>
-                    )}
-                  </button>
-                {plan.trial && billingCycle === "yearly" && (
-                  <p className="text-center text-xs text-muted-foreground mt-1.5">
-                    Try free for 1 day − cancel anytime
-                  </p>
-                )}
-              </>
-            )}
+                <button
+                  onClick={() => handleCheckout(selectedPriceId)}
+                  disabled={!!loadingPlan}
+                  className={`w-full rounded-lg py-3 font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                    plan.highlighted
+                      ? "gradient-primary text-primary-foreground hover:opacity-90"
+                      : "border border-border bg-secondary text-foreground hover:bg-primary/10 hover:border-primary/30"
+                  } disabled:opacity-50`}
+                >
+                  {loadingPlan === selectedPriceId ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4" />
+                      {plan.cta}
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           );
         })}

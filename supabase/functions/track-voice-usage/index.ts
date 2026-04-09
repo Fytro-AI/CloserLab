@@ -23,7 +23,7 @@ serve(async (req) => {
 
   await supabaseClient.rpc("increment_voice_minutes", {
     user_id_input: userData.user.id,
-    minutes_input: Math.min(minutesUsed, 60), // cap at 60 just in case
+    minutes_input: Math.min(minutesUsed, 180), // cap at 180 just in case
   });
 
   return new Response(JSON.stringify({ ok: true }), {
