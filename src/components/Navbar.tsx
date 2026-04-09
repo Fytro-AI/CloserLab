@@ -44,7 +44,7 @@ export default function Navbar() {
     { path: "/team",        label: "Team",       icon: Users },
   ];
 
-  // Bottom tab items — show the 5 most important on mobile
+  // Bottom tab items − show the 5 most important on mobile
   const BOTTOM_TABS: NavItem[] = [
     { path: "/",          label: "Home",    icon: LayoutDashboard },
     { path: "/scenarios", label: "Roleplay",   icon: Zap },
@@ -200,7 +200,7 @@ export default function Navbar() {
         </div>
       </aside>
 
-      {/* Desktop spacer — pushes page content right of sidebar */}
+      {/* Desktop spacer − pushes page content right of sidebar */}
       <div className="hidden md:block flex-shrink-0 transition-all duration-200" style={{ width: w }} />
     </>
   );

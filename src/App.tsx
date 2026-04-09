@@ -56,7 +56,7 @@ function AppRoutes() {
           <Route path="/landing" element={<Landing />} />
           <Route path="/auth"    element={<Auth />} />
 
-          {/* Protected — all gated behind TeamGate */}
+          {/* Protected − all gated behind TeamGate */}
           <Route path="/*" element={
             <ProtectedRoute>
               <TeamGate>

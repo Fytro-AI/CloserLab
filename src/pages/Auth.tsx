@@ -39,7 +39,7 @@ export default function Auth() {
     );
   }
 
-  // If already logged in, redirect — but honour a pending invite first
+  // If already logged in, redirect − but honour a pending invite first
   if (user && !isRecovery) {
     const pendingToken = localStorage.getItem(INVITE_TOKEN_KEY) || locationState.joinToken;
     if (pendingToken) {
@@ -76,9 +76,6 @@ export default function Auth() {
       if (error) {
         toast({ title: "Signup failed", description: error.message, variant: "destructive" });
       } else {
-        // For email-confirmation flows the user isn't logged in yet after signUp,
-        // so we just show a toast. Once they confirm and land back, the
-        // localStorage token will still be there and we'll redirect them.
         toast({ title: "Check your email", description: "Confirm your account to start training." });
       }
     } else {

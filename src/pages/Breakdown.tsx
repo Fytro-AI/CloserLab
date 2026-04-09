@@ -150,7 +150,7 @@ export default function Breakdown() {
       .single();
 
     if (audioBlob && insertedCall?.id) {
-      // Fire and forget — don't block the UI
+      // Fire and forget − don't block the UI
       uploadRecording(audioBlob, insertedCall.id).then((path) => {
         if (path) console.log("Recording saved:", path);
       });

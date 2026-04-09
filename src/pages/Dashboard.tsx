@@ -47,7 +47,7 @@ function delta(current: number, previous: number) {
 }
 
 function formatDuration(s: number) {
-  if (!s) return "—";
+  if (!s) return "−";
   const m = Math.floor(s / 60);
   const sec = s % 60;
   return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
@@ -60,7 +60,7 @@ function formatDate(iso: string) {
 }
 
 function Trend({ value }: { value: number | null }) {
-  if (value === null) return <span className="text-muted-foreground/30 text-xs">—</span>;
+  if (value === null) return <span className="text-muted-foreground/30 text-xs">−</span>;
   if (value > 0) return <span className="flex items-center gap-0.5 text-primary text-xs font-bold"><TrendingUp className="h-3 w-3" />+{value}</span>;
   if (value < 0) return <span className="flex items-center gap-0.5 text-destructive text-xs font-bold"><TrendingDown className="h-3 w-3" />{value}</span>;
   return <span className="flex items-center gap-0.5 text-muted-foreground/50 text-xs"><Minus className="h-3 w-3" />0</span>;
@@ -193,7 +193,7 @@ export default function Dashboard() {
     ? `${memberIds.length} reps · ${totalCalls} calls logged`
     : totalCalls > 0
     ? `${totalCalls} calls logged · last session ${formatDate(calls[0]?.created_at)}`
-    : "No calls yet — start your first simulation";
+    : "No calls yet − start your first simulation";
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl space-y-8 animate-slide-up">

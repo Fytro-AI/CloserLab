@@ -22,7 +22,7 @@ export default function TeamGate({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Always let /join/ routes through — JoinTeam handles its own auth/team logic
+  // Always let /join/ routes through − JoinTeam handles its own auth/team logic
   if (location.pathname.startsWith("/join/")) {
     return <>{children}</>;
   }
@@ -68,7 +68,7 @@ export default function TeamGate({ children }: { children: React.ReactNode }) {
               Set up your workspace
             </h1>
             <p className="text-sm text-muted-foreground mt-1.5 max-w-xs mx-auto leading-relaxed">
-              CloserLab is built for sales teams. Name your workspace — even if it's just you.
+              CloserLab is built for sales teams. Name your workspace − even if it's just you.
             </p>
           </div>
         </div>

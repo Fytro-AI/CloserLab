@@ -244,7 +244,7 @@ export default function Pricing() {
                   </button>
                 {plan.trial && billingCycle === "yearly" && (
                   <p className="text-center text-xs text-muted-foreground mt-1.5">
-                    Try free for 1 day — cancel anytime
+                    Try free for 1 day − cancel anytime
                   </p>
                 )}
               </>

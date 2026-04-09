@@ -22,6 +22,8 @@ export default function Simulation() {
     challengePassScore,
     challengeSystemPrompt,
     customIndustryDescription,
+    customPersona,
+    sessionType,
     interviewRole,
     interviewCompany,
   } = (location.state as any) || {};
@@ -50,6 +52,8 @@ export default function Simulation() {
         prospectBackstory={prospectBackstory}
         challengeSystemPrompt={challengeSystemPrompt}
         customIndustryDescription={customIndustryDescription}
+        customPersona={customPersona}
+        sessionType={sessionType}
         onEndCall={(transcript) =>
           navigate("/breakdown", {
             state: {

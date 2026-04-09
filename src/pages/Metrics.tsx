@@ -160,7 +160,7 @@ export default function Metrics() {
       <div className="rounded-lg border border-border bg-card p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-foreground">
-            {isTeamView ? "Team Score Trend" : "Score Trend"} — last 7 days
+            {isTeamView ? "Team Score Trend" : "Score Trend"} − last 7 days
           </h2>
           <Select value={metric} onValueChange={(v) => setMetric(v as MetricKey)}>
             <SelectTrigger className="w-[180px]">

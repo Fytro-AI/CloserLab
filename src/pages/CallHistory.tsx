@@ -56,7 +56,7 @@ function formatTime(d: string) {
 }
 
 function formatDuration(s: number) {
-  if (!s) return "—";
+  if (!s) return "−";
   const m = Math.floor(s / 60);
   const sec = s % 60;
   return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
@@ -111,7 +111,7 @@ function CallDetail({ call, onClose }: { call: CallRecord; onClose: () => void }
             <div className="rounded-lg border border-dashed border-border bg-secondary/10 px-4 py-3 flex items-center gap-2">
               <Headphones className="h-4 w-4 text-muted-foreground/30" />
               <p className="text-xs text-muted-foreground/50">
-                No recording — recordings are saved automatically on new calls.
+                No recording − recordings are saved automatically on new calls.
               </p>
             </div>
           )}

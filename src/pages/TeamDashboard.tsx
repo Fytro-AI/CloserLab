@@ -212,7 +212,7 @@ function MemberRow({ member, stat, isOwner, isMe, onRemove, onRoleChange }: {
               {stat?.total ? (
                 <span className={`font-black tabular-nums ${scoreColor(stat.avg_score)}`}>{stat.avg_score} avg</span>
               ) : (
-                <span className="text-muted-foreground/30">—</span>
+                <span className="text-muted-foreground/30">−</span>
               )}
             </div>
             <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground/30 flex-shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`} />
@@ -360,16 +360,13 @@ export default function TeamDashboard() {
     if (!inviteEmail.trim() || !user) return;
     setInviteBusy(true);
 
-    // Check the user exists in CloserLab
-    const { data: existing } = await (supabase as any)
-      .from("profiles")
-      .select("user_id")
-      .eq("email", inviteEmail.trim().toLowerCase())
-      .maybeSingle();
+    // Check via security-definer RPC − direct RLS query only returns the caller's own row
+    const { data: isRegistered, error: checkError } = await (supabase as any)
+      .rpc("check_email_registered", { p_email: inviteEmail.trim().toLowerCase() });
 
-    if (!existing) {
-      toast.error("No account found", {
-        description: `${inviteEmail.trim()} doesn't have a CloserLab account yet. Ask them to sign up first.`,
+    if (checkError || !isRegistered) {
+      toast.error("Not signed up yet", {
+        description: `${inviteEmail.trim()} doesn't have a CloserLab account. Ask them to sign up first.`,
       });
       setInviteBusy(false);
       return;
@@ -448,8 +445,8 @@ export default function TeamDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: "Members",     value: members.length,    icon: Users,    accent: false },
-          { label: "Calls / 30d", value: totalCalls || "—", icon: Phone,    accent: false },
-          { label: "Avg Score",   value: avgScore || "—",   icon: Target,   accent: avgScore >= 70 },
+          { label: "Calls / 30d", value: totalCalls || "−", icon: Phone,    accent: false },
+          { label: "Avg Score",   value: avgScore || "−",   icon: Target,   accent: avgScore >= 70 },
           { label: "Active Reps", value: activeMems,         icon: Activity, accent: false },
         ].map(({ label, value, icon: Icon, accent }) => (
           <div
@@ -494,7 +491,7 @@ export default function TeamDashboard() {
                     <span className="text-base flex-shrink-0">{rank.icon}</span>
                     <p className="text-sm font-semibold text-foreground flex-1 truncate">{m.name}</p>
                     <p className={`text-sm font-black tabular-nums flex-shrink-0 ${s?.total ? scoreColor(s.avg_score) : "text-muted-foreground/30"}`}>
-                      {s?.total ? s.avg_score : "—"}
+                      {s?.total ? s.avg_score : "−"}
                     </p>
                   </div>
                 );
@@ -534,7 +531,7 @@ export default function TeamDashboard() {
 
         {pagedMembers.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border py-10 text-center text-sm text-muted-foreground/40">
-            No members yet — invite your reps below
+            No members yet − invite your reps below
           </div>
         ) : (
           <div className="space-y-1.5">
@@ -558,7 +555,7 @@ export default function TeamDashboard() {
         <div className="space-y-4">
           <div>
             <p className="font-black text-foreground">Invite Reps</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Create a link and send it — they join when they open it.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Create a link and send it − they join when they open it.</p>
           </div>
 
           <div className="rounded-xl border border-border bg-card p-5 space-y-4">

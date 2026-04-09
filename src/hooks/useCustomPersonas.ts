@@ -13,6 +13,7 @@ export interface CustomPersona {
   company_size: string;
   age_range: string;
   conversation_type: "B2B" | "B2C";
+  session_type: "discovery" | "interview";
   description: string;
   product_details: string;
   call_goal: string | null;
@@ -26,6 +27,7 @@ export interface CreatePersonaForm {
   company_size: string;
   age_range: string;
   conversation_type: "B2B" | "B2C";
+  session_type: "discovery" | "interview";
   description: string;
   product_details: string;
   call_goal: string;
@@ -41,8 +43,6 @@ export function useCustomPersonas() {
     if (!user) return;
     setLoading(true);
 
-    // RLS policy handles access control — just fetch what the user can see
-    // Add client-side filter hint for clarity
     let query = supabase
       .from("custom_personas")
       .select("*")
@@ -77,6 +77,7 @@ export function useCustomPersonas() {
         company_size: form.company_size,
         age_range: form.age_range,
         conversation_type: form.conversation_type,
+        session_type: form.session_type,
         description: form.description.trim(),
         product_details: form.product_details.trim(),
         call_goal: form.call_goal.trim() || null,

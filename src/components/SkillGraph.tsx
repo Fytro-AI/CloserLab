@@ -106,7 +106,7 @@ export default function SkillGraph({ userIds, isTeamView }: SkillGraphProps) {
     <div className="rounded-lg border border-border bg-card p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-foreground">Performance</h2>
+          <h2 className="text-lg font-bold text-foreground">Performance (last 50 calls)</h2>
           {isTeamView && (
             <p className="text-xs text-muted-foreground">Team average · all members</p>
           )}

@@ -16,6 +16,8 @@ interface RealtimeCallProps {
   prospectBackstory?: string;
   challengeSystemPrompt?: string;
   customIndustryDescription?: string;
+  customPersona?: any;
+  sessionType?: string;
   onEndCall: (
     transcript: { role: "user" | "assistant"; content: string }[],
     audioBlob?: Blob | null
@@ -52,6 +54,8 @@ export default function RealtimeCall({
   prospectBackstory,
   challengeSystemPrompt,
   customIndustryDescription,
+  customPersona,
+  sessionType,
   onEndCall,
 }: RealtimeCallProps) {
   const personaData = PERSONAS.find((p) => p.id === persona) || PERSONAS[0];
@@ -277,12 +281,10 @@ export default function RealtimeCall({
 
       const tokenResp = await supabase.functions.invoke("realtime-token", {
         body: {
-          simulationMode,
           difficulty,
-          interviewRole,
-          interviewCompany,
-          persona,
-          industry,
+          sessionType: sessionType || simulationMode || "discovery",
+          customPersona: customPersona || null,
+          // Legacy fallbacks (challenges, etc.) — kept for backward compat
           prospectName,
           prospectCompany,
           prospectBackstory,
