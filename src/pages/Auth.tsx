@@ -1,17 +1,21 @@
 import { useState, useEffect } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { Zap, Mail, Lock, User, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { INVITE_TOKEN_KEY } from "@/pages/JoinTeam";
 
 export default function Auth() {
   const { user, loading, signUp, signIn } = useAuth();
   const { toast } = useToast();
-  const [isSignUp, setIsSignUp] = useState(false);
+  const location = useLocation();
+  const locationState = (location.state as any) || {};
+
+  const [isSignUp, setIsSignUp] = useState(locationState.signUp ?? false);
   const [isForgot, setIsForgot] = useState(false);
   const [isRecovery, setIsRecovery] = useState(false);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(locationState.email ?? "");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [name, setName] = useState("");
@@ -35,7 +39,20 @@ export default function Auth() {
     );
   }
 
-  if (user && !isRecovery) return <Navigate to="/" replace />;
+  // If already logged in, redirect — but honour a pending invite first
+  if (user && !isRecovery) {
+    const pendingToken = localStorage.getItem(INVITE_TOKEN_KEY) || locationState.joinToken;
+    if (pendingToken) {
+      return <Navigate to={`/join/${pendingToken}`} replace />;
+    }
+    return <Navigate to="/" replace />;
+  }
+
+  // After a successful sign-in/sign-up, redirect to the pending invite if one exists
+  function getPostAuthRedirect(): string {
+    const pendingToken = localStorage.getItem(INVITE_TOKEN_KEY) || locationState.joinToken;
+    return pendingToken ? `/join/${pendingToken}` : "/";
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +76,9 @@ export default function Auth() {
       if (error) {
         toast({ title: "Signup failed", description: error.message, variant: "destructive" });
       } else {
+        // For email-confirmation flows the user isn't logged in yet after signUp,
+        // so we just show a toast. Once they confirm and land back, the
+        // localStorage token will still be there and we'll redirect them.
         toast({ title: "Check your email", description: "Confirm your account to start training." });
       }
     } else {
@@ -66,6 +86,7 @@ export default function Auth() {
       if (error) {
         toast({ title: "Login failed", description: error.message, variant: "destructive" });
       }
+      // On success, the `user` state will update and the Navigate above will fire.
     }
     setSubmitting(false);
   };

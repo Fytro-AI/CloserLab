@@ -4,14 +4,13 @@ import { useTeam } from "@/hooks/useTeam";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "react-router-dom";
 
-// Values must match check constraint: size = ANY (ARRAY['1-5','5-10','10-20','20-50'])
 const TEAM_SIZES = [
-  { value: "1-5",   label: "1–5 people"     },
-  { value: "5-10",  label: "5–10 people"    },
-  { value: "10-20", label: "10–20 people"   },
-  { value: "20-50", label: "20–50 people"   },
-  { value: "50-100",label: "50-100 people"  },
-  { value: "100+",  label: "100+ people"    },
+  { value: "1-5",    label: "1–5 people"    },
+  { value: "5-10",   label: "5–10 people"   },
+  { value: "10-20",  label: "10–20 people"  },
+  { value: "20-50",  label: "20–50 people"  },
+  { value: "50-100", label: "50–100 people" },
+  { value: "100+",   label: "100+ people"   },
 ];
 
 export default function TeamGate({ children }: { children: React.ReactNode }) {
@@ -23,6 +22,14 @@ export default function TeamGate({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Always let /join/ routes through — JoinTeam handles its own auth/team logic
+  if (location.pathname.startsWith("/join/")) {
+    return <>{children}</>;
+  }
+
+  // Show spinner while loading OR while hasTeam is null (not yet determined).
+  // This prevents the creation form flashing before the DB check completes,
+  // which is what caused invited users to end up creating a second team.
   if (loading || hasTeam === null) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -31,12 +38,9 @@ export default function TeamGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (location.pathname.startsWith("/join/")) {
-    return <>{children}</>;
-  }
-
   if (hasTeam) return <>{children}</>;
 
+  // ── No team: show creation form ───────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !size) return;

@@ -7,24 +7,25 @@ import { useTeam } from "@/hooks/useTeam";
 
 type Phase = "loading" | "confirm" | "joining" | "success" | "error";
 
+export const INVITE_TOKEN_KEY = "cl_pending_invite_token";
+
 export default function JoinTeam() {
   const { token } = useParams<{ token: string }>();
-  const navigate   = useNavigate();
-  const { user }   = useAuth();
-
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { fetchTeam } = useTeam();
 
-  const [phase,    setPhase]    = useState<Phase>("loading");
-  const [invite,   setInvite]   = useState<{ teamName: string; inviterName: string; email: string } | null>(null);
+  const [phase, setPhase] = useState<Phase>("loading");
+  const [invite, setInvite] = useState<{ teamName: string; inviterName: string; email: string } | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // ── 1. Validate the token ─────────────────────────────────────────────────
+  // Validate token on mount
   useEffect(() => {
     if (!token) { setPhase("error"); setErrorMsg("No invite token found."); return; }
     validateToken();
   }, [token]);
 
-  // ── 2. If user is already logged in and on the right email, auto-join ─────
+  // Auto-join if already logged in with the right email
   useEffect(() => {
     if (phase === "confirm" && user && invite && user.email === invite.email) {
       joinTeam();
@@ -34,20 +35,13 @@ export default function JoinTeam() {
   async function validateToken() {
     setPhase("loading");
     try {
-      // Fetch invite details (no auth needed — public read via service role RPC)
       const { data, error } = await (supabase as any).rpc("get_invite_details", { p_token: token });
-
       if (error || !data) {
         setPhase("error");
         setErrorMsg("This invite link is invalid or has expired.");
         return;
       }
-
-      setInvite({
-        teamName:    data.team_name,
-        inviterName: data.inviter_name,
-        email:       data.email,
-      });
+      setInvite({ teamName: data.team_name, inviterName: data.inviter_name, email: data.email });
       setPhase("confirm");
     } catch {
       setPhase("error");
@@ -60,11 +54,11 @@ export default function JoinTeam() {
     setPhase("joining");
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
 
-      if (!accessToken) {
-        // Not logged in — redirect to auth with token in state so we come back
-        navigate("/auth", { state: { joinToken: token } });
+      if (!session?.access_token) {
+        // Persist token so Auth.tsx can finish the join after sign-in/sign-up
+        localStorage.setItem(INVITE_TOKEN_KEY, token);
+        navigate("/auth", { state: { joinToken: token, email: invite.email } });
         return;
       }
 
@@ -78,21 +72,15 @@ export default function JoinTeam() {
         return;
       }
 
+      localStorage.removeItem(INVITE_TOKEN_KEY);
       setPhase("success");
-      // Re-fetch team state so useTeam has hasTeam=true before we navigate.
-      // TeamGate reads from this — without this refresh it stays false and
-      // intercepts the user with the "create a team" form.
-      await fetchTeam();
+      await fetchTeam(); // make TeamGate see hasTeam=true before we navigate
       setTimeout(() => navigate("/team"), 1500);
     } catch {
       setPhase("error");
       setErrorMsg("An unexpected error occurred.");
     }
   }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // UI
-  // ─────────────────────────────────────────────────────────────────────────
 
   if (phase === "loading" || phase === "joining") {
     return (
@@ -128,10 +116,7 @@ export default function JoinTeam() {
           <XCircle className="h-14 w-14 text-destructive mx-auto" />
           <h1 className="text-2xl font-black text-foreground">Invite not valid</h1>
           <p className="text-sm text-muted-foreground">{errorMsg}</p>
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 rounded-lg gradient-primary px-5 py-2.5 text-sm font-bold text-primary-foreground hover:opacity-90 transition-opacity"
-          >
+          <Link to="/" className="inline-flex items-center gap-2 rounded-lg gradient-primary px-5 py-2.5 text-sm font-bold text-primary-foreground hover:opacity-90 transition-opacity">
             Go to Dashboard
           </Link>
         </div>
@@ -143,7 +128,6 @@ export default function JoinTeam() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-sm w-full space-y-6 animate-slide-up">
-        {/* Logo */}
         <div className="flex justify-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl gradient-primary">
             <Zap className="h-6 w-6 text-primary-foreground" />
@@ -161,18 +145,15 @@ export default function JoinTeam() {
           </p>
         </div>
 
-        {/* CTA block */}
         {user ? (
           user.email === invite?.email ? (
-            // Logged in with the right account — join immediately
             <button
               onClick={joinTeam}
               className="w-full flex items-center justify-center gap-2 rounded-lg gradient-primary py-3 font-bold text-primary-foreground hover:opacity-90 transition-opacity"
             >
-              Accept & Join Team <ArrowRight className="h-4 w-4" />
+              Accept &amp; Join Team <ArrowRight className="h-4 w-4" />
             </button>
           ) : (
-            // Logged in with the WRONG account
             <div className="space-y-3">
               <div className="rounded-lg border border-amber-400/30 bg-amber-400/5 px-4 py-3 text-sm text-amber-400/90">
                 You're logged in as <strong>{user.email}</strong> but this invite is for{" "}
@@ -187,10 +168,12 @@ export default function JoinTeam() {
             </div>
           )
         ) : (
-          // Not logged in
           <div className="space-y-3">
             <button
-              onClick={() => navigate("/auth", { state: { joinToken: token, email: invite?.email } })}
+              onClick={() => {
+                localStorage.setItem(INVITE_TOKEN_KEY, token!);
+                navigate("/auth", { state: { joinToken: token, email: invite?.email } });
+              }}
               className="w-full flex items-center justify-center gap-2 rounded-lg gradient-primary py-3 font-bold text-primary-foreground hover:opacity-90 transition-opacity"
             >
               Sign in to accept <ArrowRight className="h-4 w-4" />
@@ -198,7 +181,10 @@ export default function JoinTeam() {
             <p className="text-center text-xs text-muted-foreground">
               New to CloserLab?{" "}
               <button
-                onClick={() => navigate("/auth", { state: { joinToken: token, email: invite?.email, signUp: true } })}
+                onClick={() => {
+                  localStorage.setItem(INVITE_TOKEN_KEY, token!);
+                  navigate("/auth", { state: { joinToken: token, email: invite?.email, signUp: true } });
+                }}
                 className="text-primary font-semibold hover:underline"
               >
                 Create an account
