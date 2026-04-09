@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { getRank } from "@/lib/game-data";
+import { toast } from "@/components/ui/sonner";
 
 /* ─── Constants ─── */
 const SALES_ROLES = [
@@ -358,23 +359,34 @@ export default function TeamDashboard() {
   async function sendInvite() {
     if (!inviteEmail.trim() || !user) return;
     setInviteBusy(true);
-    setInviteError(null);
-    
-    const { data, error } = await supabase.functions.invoke("send-team-invite", {
-        body: { email: inviteEmail.trim() },
-    });
-    
-    if (error || data?.error) {
-        setInviteError(data?.error ?? error?.message ?? "Failed to send invite.");
-    } else {
-        setInviteSent(true);
-        setInviteEmail("");
-        setTimeout(() => setInviteSent(false), 3000);
-        load(); // refresh the pending invites list
+
+    // Check the user exists in CloserLab
+    const { data: existing } = await (supabase as any)
+      .from("profiles")
+      .select("user_id")
+      .eq("email", inviteEmail.trim().toLowerCase())
+      .maybeSingle();
+
+    if (!existing) {
+      toast.error("No account found", {
+        description: `${inviteEmail.trim()} doesn't have a CloserLab account yet. Ask them to sign up first.`,
+      });
+      setInviteBusy(false);
+      return;
     }
-    
+
+    const { error } = await (supabase as any)
+      .from("team_invites")
+      .insert({ team_id: profile?.team_id, invited_by: user.id, email: inviteEmail.trim() });
+
+    if (!error) {
+      setInviteSent(true);
+      setInviteEmail("");
+      setTimeout(() => setInviteSent(false), 3000);
+      load();
+    }
     setInviteBusy(false);
-    }
+  }
 
   async function cancelInvite(id: string) {
     await (supabase as any).from("team_invites").update({ status: "expired" }).eq("id", id);
