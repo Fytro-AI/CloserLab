@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Building2, Users, ArrowRight, Loader2, ChevronDown } from "lucide-react";
 import { useTeam } from "@/hooks/useTeam";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "react-router-dom";
-import { JUST_JOINED_TEAM_KEY } from "@/pages/InviteAuth";
 
 const TEAM_SIZES = [
   { value: "1-5",    label: "1–5 people"    },
@@ -15,7 +14,7 @@ const TEAM_SIZES = [
 ];
 
 export default function TeamGate({ children }: { children: React.ReactNode }) {
-  const { hasTeam, loading, createTeam, fetchTeam } = useTeam();
+  const { hasTeam, loading, createTeam } = useTeam();
   const location = useLocation();
   const { toast } = useToast();
   const [name, setName] = useState("");
@@ -23,24 +22,14 @@ export default function TeamGate({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // When landing on /team after an invite join, fetchTeam so hasTeam updates
-  useEffect(() => {
-    const justJoined = localStorage.getItem(JUST_JOINED_TEAM_KEY);
-    if (justJoined) {
-      localStorage.removeItem(JUST_JOINED_TEAM_KEY);
-      fetchTeam();
-    }
-  }, [location.pathname]);
-
-  // Never block invite-related routes
-  if (
-    location.pathname.startsWith("/join/") ||
-    location.pathname.startsWith("/invite-auth/")
-  ) {
+  // Always let /join/ routes through — JoinTeam handles its own auth/team logic
+  if (location.pathname.startsWith("/join/")) {
     return <>{children}</>;
   }
 
-  // Spinner while loading or not yet determined (null = DB check in flight)
+  // Show spinner while loading OR while hasTeam is null (not yet determined).
+  // This prevents the creation form flashing before the DB check completes,
+  // which is what caused invited users to end up creating a second team.
   if (loading || hasTeam === null) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -51,7 +40,7 @@ export default function TeamGate({ children }: { children: React.ReactNode }) {
 
   if (hasTeam) return <>{children}</>;
 
-  // ── No team yet: show creation form ──────────────────────────────────────
+  // ── No team: show creation form ───────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !size) return;

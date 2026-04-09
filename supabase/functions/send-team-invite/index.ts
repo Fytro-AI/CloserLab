@@ -117,7 +117,7 @@ serve(async (req) => {
 
     // ── Build invite link ─────────────────────────────────────────────────────
     const origin = req.headers.get("origin") || "https://closerlab.net";
-    const inviteLink = `${origin}/invite-auth/${token}`;
+    const inviteLink = `${origin}/join/${token}`;
 
     // ── Send email via Resend ─────────────────────────────────────────────────
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");

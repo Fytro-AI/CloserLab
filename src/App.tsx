@@ -24,7 +24,6 @@ import NotFound from "./pages/NotFound";
 import Metrics from "./pages/Metrics";
 import TeamDashboard from "./pages/TeamDashboard";
 import JoinTeam from "./pages/JoinTeam";
-import InviteAuth from "./pages/InviteAuth";
 
 const queryClient = new QueryClient();
 
@@ -77,7 +76,6 @@ function AppRoutes() {
                   <Route path="/team"       element={<TeamDashboard />} />
                   <Route path="*"           element={<NotFound />} />
                   <Route path="/join/:token" element={<JoinTeam />} />
-                  <Route path="/invite-auth/:token" element={<InviteAuth />} />
                 </Routes>
               </TeamGate>
             </ProtectedRoute>
