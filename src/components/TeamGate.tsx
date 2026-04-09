@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Building2, Users, ArrowRight, Loader2, ChevronDown } from "lucide-react";
 import { useTeam } from "@/hooks/useTeam";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "react-router-dom";
 
 // Values must match check constraint: size = ANY (ARRAY['1-5','5-10','10-20','20-50'])
 const TEAM_SIZES = [
@@ -15,6 +16,7 @@ const TEAM_SIZES = [
 
 export default function TeamGate({ children }: { children: React.ReactNode }) {
   const { hasTeam, loading, createTeam } = useTeam();
+  const location = useLocation();
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [size, setSize] = useState("");
@@ -27,6 +29,10 @@ export default function TeamGate({ children }: { children: React.ReactNode }) {
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/40" />
       </div>
     );
+  }
+
+  if (location.pathname.startsWith("/join/")) {
+    return <>{children}</>;
   }
 
   if (hasTeam) return <>{children}</>;
