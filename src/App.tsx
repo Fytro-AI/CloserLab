@@ -4,11 +4,13 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { TeamProvider } from "@/hooks/useTeam";
 import { Analytics } from "@vercel/analytics/react";
 import Navbar from "@/components/Navbar";
 import TeamGate from "@/components/TeamGate";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
+import InviteAuth from "./pages/InviteAuth";
 import Dashboard from "./pages/Dashboard";
 import Scenarios from "./pages/Scenarios";
 import Challenges from "./pages/Challenges";
@@ -18,12 +20,10 @@ import Leaderboard from "./pages/Leaderboard";
 import CallHistory from "./pages/CallHistory";
 import Pricing from "./pages/Pricing";
 import Account from "./pages/Account";
-import LiveCallPage from "./pages/LiveCallPage";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 import Metrics from "./pages/Metrics";
 import TeamDashboard from "./pages/TeamDashboard";
-import JoinTeam from "./pages/JoinTeam";
 
 const queryClient = new QueryClient();
 
@@ -42,9 +42,11 @@ function AppRoutes() {
   const { user } = useAuth();
   const location = useLocation();
 
-  const hideSidebar = !user
-    || location.pathname === "/landing"
-    || location.pathname === "/auth";
+  const hideSidebar =
+    !user ||
+    location.pathname === "/landing" ||
+    location.pathname === "/auth" ||
+    location.pathname.startsWith("/invite-auth/");
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -56,26 +58,28 @@ function AppRoutes() {
           <Route path="/landing" element={<Landing />} />
           <Route path="/auth"    element={<Auth />} />
 
-          {/* Protected — all gated behind TeamGate */}
+          {/* Invite flow — outside ProtectedRoute and TeamGate entirely */}
+          <Route path="/invite-auth/:token" element={<InviteAuth />} />
+
+          {/* Everything else — protected + team-gated */}
           <Route path="/*" element={
             <ProtectedRoute>
               <TeamGate>
                 <Routes>
-                  <Route path="/"           element={<Dashboard />} />
-                  <Route path="/scenarios"  element={<Scenarios />} />
-                  <Route path="/challenges" element={<Challenges />} />
-                  <Route path="/simulation" element={<Simulation />} />
-                  <Route path="/breakdown"  element={<Breakdown />} />
+                  <Route path="/"            element={<Dashboard />} />
+                  <Route path="/scenarios"   element={<Scenarios />} />
+                  <Route path="/challenges"  element={<Challenges />} />
+                  <Route path="/simulation"  element={<Simulation />} />
+                  <Route path="/breakdown"   element={<Breakdown />} />
                   <Route path="/leaderboard" element={<Leaderboard />} />
-                  <Route path="/history"    element={<CallHistory />} />
-                  <Route path="/pricing"    element={<Pricing />} />
-                  <Route path="/account"    element={<Account />} />
-                  <Route path="/live-call"  element={<ComingSoon />} />
+                  <Route path="/history"     element={<CallHistory />} />
+                  <Route path="/pricing"     element={<Pricing />} />
+                  <Route path="/account"     element={<Account />} />
+                  <Route path="/live-call"   element={<ComingSoon />} />
                   <Route path="/coming-soon" element={<ComingSoon />} />
-                  <Route path="/metrics"    element={<Metrics />} />
-                  <Route path="/team"       element={<TeamDashboard />} />
-                  <Route path="*"           element={<NotFound />} />
-                  <Route path="/join/:token" element={<JoinTeam />} />
+                  <Route path="/metrics"     element={<Metrics />} />
+                  <Route path="/team"        element={<TeamDashboard />} />
+                  <Route path="*"            element={<NotFound />} />
                 </Routes>
               </TeamGate>
             </ProtectedRoute>
@@ -93,7 +97,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <AppRoutes />
+          <TeamProvider>
+            <AppRoutes />
+          </TeamProvider>
         </AuthProvider>
       </BrowserRouter>
       <Analytics />
