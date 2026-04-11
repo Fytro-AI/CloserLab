@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Zap, Crown, Mic, Loader2 } from "lucide-react";
+import { Check, Zap, Crown, Mic, Loader2, ChevronUp, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/useProfile";
 
@@ -8,7 +8,11 @@ const PRICES = {
   starter_yearly:  "price_1T9rrSPNpQaZotKHNxsyxpAD",
   pro_monthly:     "price_1T9rx3PNpQaZotKHzAmrOT3F",
   pro_yearly:      "price_1T9s39PNpQaZotKHp1Ji6V5m",
+  team_monthly:    "price_1TKbYMPNpQaZotKHxkabbGSp",
+  team_yearly:     "price_1TKczKPNpQaZotKHP7GWDSPQ",
 };
+
+const TEAM_PRICE_IDS = new Set([PRICES.team_monthly, PRICES.team_yearly]);
 
 const PLANS = [
   {
@@ -27,8 +31,8 @@ const PLANS = [
     cta: "Go Pro",
     highlighted: true,
     badge: false,
-    priceId: { monthly: PRICES.pro_monthly, yearly: PRICES.pro_yearly },
-    trial: "1-day free trial",
+    priceId: { monthly: PRICES.team_monthly, yearly: PRICES.team_yearly },
+    trial: null,
   },
   {
     id: "enterprise",
@@ -54,13 +58,15 @@ export default function Pricing() {
   const { profile } = useProfile();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
+  const [seats, setSeats] = useState(1);
 
   const handleCheckout = async (priceId: string | null) => {
     if (!priceId) return;
     setLoadingPlan(priceId);
     try {
+      const isTeamPrice = TEAM_PRICE_IDS.has(priceId);
       const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { priceId },
+        body: isTeamPrice ? { priceId, seats } : { priceId },
       });
       if (error) throw error;
       if (data?.url) window.open(data.url, "_blank");
@@ -125,9 +131,12 @@ export default function Pricing() {
       <div className="grid gap-6 md:grid-cols-2">
         {PLANS.map((plan) => {
           const isCurrentPro = profile?.is_pro && plan.id === "pro";
+          const isTeamPlan = plan.id === "pro";
           const isCurrentFree = !profile?.is_pro && plan.id === "free";
           const selectedPriceId = plan.priceId?.[billingCycle] ?? null;
-          const displayPrice = billingCycle === "yearly" ? plan.yearlyPrice : plan.monthlyPrice;
+          const displayPrice = isTeamPlan
+            ? (billingCycle === "yearly" ? "€251" : "€29.99")
+            : (billingCycle === "yearly" ? plan.yearlyPrice : plan.monthlyPrice);
           const displayPeriod = billingCycle === "yearly" && plan.id !== "enterprise" ? "/year per seat" : plan.period;
 
           return (
@@ -175,6 +184,39 @@ export default function Pricing() {
                   </li>
                 ))}
               </ul>
+
+              {isTeamPlan && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground flex-shrink-0">Seats:</span>
+                    <div className="flex items-center border border-border rounded-lg overflow-hidden bg-background">
+                      <button
+                        onClick={() => setSeats((s) => Math.max(1, s - 1))}
+                        className="px-2.5 py-1.5 text-muted-foreground hover:bg-secondary transition-colors"
+                      >
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </button>
+                      <input
+                        type="number"
+                        min={1}
+                        max={500}
+                        value={seats}
+                        onChange={(e) => setSeats(Math.max(1, Math.min(500, parseInt(e.target.value) || 1)))}
+                        className="w-14 py-1.5 text-sm font-bold text-foreground tabular-nums text-center bg-background border-x border-border focus:outline-none"
+                      />
+                      <button
+                        onClick={() => setSeats((s) => Math.min(500, s + 1))}
+                        className="px-2.5 py-1.5 text-muted-foreground hover:bg-secondary transition-colors"
+                      >
+                        <ChevronUp className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <span className="text-xs font-bold text-foreground">
+                      = €{(billingCycle === "monthly" ? seats * 29.99 : seats * 251).toFixed(2)}/{billingCycle === "monthly" ? "mo" : "yr"}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* CTA */}
               {plan.id === "enterprise" ? (

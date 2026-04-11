@@ -9,6 +9,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { getRank } from "@/lib/game-data";
 import { toast } from "@/components/ui/sonner";
+import TeamSubscriptionPanel from "@/components/TeamSubscriptionPanel";
 
 /* ─── Constants ─── */
 const SALES_ROLES = [
@@ -461,6 +462,13 @@ export default function TeamDashboard() {
           </div>
         ))}
       </div>
+
+      {isOwner && team && (
+        <TeamSubscriptionPanel
+          team={team}
+          membersCount={members.length}
+        />
+      )}
 
       {/* Skill breakdown + leaderboard */}
       {activeMems > 0 && (
