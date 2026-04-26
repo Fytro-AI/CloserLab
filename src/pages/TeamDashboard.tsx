@@ -388,9 +388,10 @@ export default function TeamDashboard() {
     }
   
     // 3. Fire the email
-    const { error: emailError } = await supabase.functions.invoke("send-team-invite", {
+    const { data: emailData, error: emailError } = await supabase.functions.invoke("send-team-invite", {
       body: { invite_id: newInvite.id },
     });
+    console.log("email result:", emailData, emailError);
   
     if (emailError) {
       // Invite row exists, email just failed — still show partial success
