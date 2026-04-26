@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
-import { ArrowRight, CheckCircle, XCircle, TrendingUp, Zap, Loader2, Trophy, X, Target, Briefcase } from "lucide-react";
+import {
+  ArrowRight, CheckCircle, XCircle, TrendingUp, Zap, Loader2,
+  Trophy, X, Target, Briefcase, FileText, BarChart3, MessageSquare,
+  ChevronDown, ChevronUp,
+} from "lucide-react";
 import SkillBar from "@/components/SkillBar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,6 +19,10 @@ interface Scores {
   objection_handling_score: number;
   clarity_score: number;
   closing_score: number;
+  // Deep analysis
+  call_summary?: string;
+  customer_response?: string;
+  overall_impression?: string;
   // Meeting Setter
   speed_to_value_score?: number;
   clarity_of_ask_score?: number;
@@ -29,6 +37,40 @@ interface Scores {
   weaknesses: string[];
   missed_opportunities: string[];
   improvement_tip: string;
+}
+
+/* ── Collapsible section ── */
+function Section({ title, icon: Icon, children, defaultOpen = true }: {
+  title: string; icon: React.ElementType; children: React.ReactNode; defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-secondary/20 transition-colors"
+      >
+        <div className="flex items-center gap-2.5">
+          <Icon className="h-4 w-4 text-muted-foreground/50" />
+          <span className="text-sm font-black uppercase tracking-widest text-muted-foreground">{title}</span>
+        </div>
+        {open ? <ChevronUp className="h-4 w-4 text-muted-foreground/40" /> : <ChevronDown className="h-4 w-4 text-muted-foreground/40" />}
+      </button>
+      {open && <div className="px-5 pb-5 space-y-4 border-t border-border pt-4">{children}</div>}
+    </div>
+  );
+}
+
+/* ── Score pill ── */
+function ScorePill({ value }: { value: number }) {
+  const color = value >= 70 ? "text-primary bg-primary/10 border-primary/20"
+    : value >= 50 ? "text-amber-400 bg-amber-400/10 border-amber-400/20"
+    : "text-destructive bg-destructive/10 border-destructive/20";
+  return (
+    <span className={`inline-flex items-center justify-center rounded-lg border px-3 py-1 text-2xl font-black tabular-nums ${color}`}>
+      {value}
+    </span>
+  );
 }
 
 export default function Breakdown() {
@@ -65,10 +107,7 @@ export default function Breakdown() {
   const audioBlob = location.state?.audioBlob as Blob | undefined;
 
   useEffect(() => {
-    if (transcript.length === 0) {
-      navigate("/scenarios");
-      return;
-    }
+    if (transcript.length === 0) { navigate("/scenarios"); return; }
     scoreCall();
   }, []);
 
@@ -79,7 +118,6 @@ export default function Breakdown() {
       const earned = calculateXP(scores.overall_score, difficulty, streak);
       setXpEarned(earned);
       saveResults(scores, earned);
-
       if (challengeId) {
         const passed = scores.overall_score >= (challengePassScore || 70);
         saveCompletion(challengeId, difficulty, scores.overall_score, passed, earned);
@@ -90,33 +128,18 @@ export default function Breakdown() {
   const scoreCall = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
       const resp = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/score-call`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            transcript,
-            industry,
-            difficulty,
-            persona,
-            simulationMode,
-            interviewRole,
-            interviewCompany,
-          }),
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
+          body: JSON.stringify({ transcript, industry, difficulty, persona, simulationMode, interviewRole, interviewCompany }),
         }
       );
-
       const data = await resp.json();
       if (!resp.ok) throw new Error(data?.error || "Failed to score call");
       setScores(data as Scores);
     } catch (e: any) {
-      console.error("Scoring error:", e);
       setError(e.message || "Failed to score call");
     } finally {
       setLoading(false);
@@ -130,10 +153,7 @@ export default function Breakdown() {
       .from("call_history")
       .insert({
         user_id: user.id,
-        industry,
-        difficulty,
-        persona,
-        duration,
+        industry, difficulty, persona, duration,
         overall_score: data.overall_score,
         confidence_score: data.confidence_score,
         objection_handling_score: data.objection_handling_score,
@@ -143,45 +163,49 @@ export default function Breakdown() {
         weaknesses: data.weaknesses,
         missed_opportunities: data.missed_opportunities,
         improvement_tip: data.improvement_tip,
+        // New deep analysis fields
+        call_summary: data.call_summary ?? null,
+        customer_response: data.customer_response ?? null,
+        overall_impression: data.overall_impression ?? null,
         xp_earned: earned,
         transcript,
+        simulation_mode: simulationMode,
       })
       .select("id")
       .single();
 
+    // Upload recording if available
     if (audioBlob && insertedCall?.id) {
-      // Fire and forget − don't block the UI
-      uploadRecording(audioBlob, insertedCall.id).then((path) => {
-        if (path) console.log("Recording saved:", path);
-      });
+      try {
+        const path = await uploadRecording(audioBlob, insertedCall.id);
+        if (path) {
+          // Update the call with the recording path
+          await supabase.from("call_history").update({ recording_url: path }).eq("id", insertedCall.id);
+          console.log("Recording saved:", path);
+        }
+      } catch (e) {
+        console.warn("Recording upload failed:", e);
+      }
     }
 
     const newXp = profile.xp + earned;
     const today = new Date().toISOString().split("T")[0];
-    const lastCallDate = profile.last_call_date;
-
     let newStreak = profile.streak;
-    if (lastCallDate) {
-      const last = new Date(lastCallDate);
-      const diff = Math.floor((Date.now() - last.getTime()) / (1000 * 60 * 60 * 24));
+    if (profile.last_call_date) {
+      const diff = Math.floor((Date.now() - new Date(profile.last_call_date).getTime()) / (1000 * 60 * 60 * 24));
       if (diff === 1) newStreak += 1;
       else if (diff > 1) newStreak = 1;
     } else {
       newStreak = 1;
     }
-
     let weeklyCount = profile.weekly_calls_count;
     let weekStart = profile.week_start;
     const now = new Date();
     if (weekStart) {
-      const ws = new Date(weekStart);
-      const daysSince = Math.floor((now.getTime() - ws.getTime()) / (1000 * 60 * 60 * 24));
+      const daysSince = Math.floor((now.getTime() - new Date(weekStart).getTime()) / (1000 * 60 * 60 * 24));
       if (daysSince >= 7) { weeklyCount = 1; weekStart = today; }
       else { weeklyCount += 1; }
-    } else {
-      weeklyCount = 1;
-      weekStart = today;
-    }
+    } else { weeklyCount = 1; weekStart = today; }
 
     const blend = (old: number, fresh: number) => Math.round(old * 0.7 + fresh * 0.3);
 
@@ -209,9 +233,7 @@ export default function Breakdown() {
           <h2 className="text-xl font-bold text-foreground">
             {isInterview ? "Scoring your interview..." : isMeetingSetter ? "Scoring your cold call..." : "Analyzing your call..."}
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            {isInterview ? "How did you do?" : isMeetingSetter ? "Did you earn the meeting?" : "Our AI coach is reviewing every word."}
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">Reviewing every moment of the conversation.</p>
         </div>
       </div>
     );
@@ -232,82 +254,92 @@ export default function Breakdown() {
   }
 
   return (
-    <div className="container mx-auto max-w-2xl px-4 py-8 space-y-6 animate-slide-up">
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-black text-foreground">
-          {isInterview ? "Interview Complete." : isMeetingSetter ? "Cold Call Complete." : "Call Complete."}
+    <div className="container mx-auto max-w-2xl px-4 py-8 space-y-5 animate-slide-up">
+
+      {/* Header */}
+      <div className="space-y-1">
+        <h1 className="text-2xl font-black text-foreground tracking-tight">
+          {isInterview ? "Interview Debrief" : isMeetingSetter ? "Cold Call Debrief" : "Call Debrief"}
         </h1>
-        <p className="text-muted-foreground">
-          {isInterview ? `${interviewRole} interview at ${interviewCompany}.` : isMeetingSetter ? "Here's how you did on the cold call." : "Here's your debrief, soldier."}
+        <p className="text-sm text-muted-foreground">
+          {isInterview
+            ? `${interviewRole} · ${interviewCompany}`
+            : `${industry} · ${persona} · ${difficulty}`}
         </p>
       </div>
 
-      {/* Interview result banner */}
+      {/* Result banner */}
       {isInterview && (
-        <div className={`rounded-lg border p-5 text-center ${scores.interview_passed ? "border-success/30 bg-success/10" : "border-destructive/30 bg-destructive/10"}`}>
-          <div className="flex items-center justify-center gap-2 mb-1">
-            {scores.interview_passed ? <Briefcase className="h-6 w-6 text-success" /> : <X className="h-6 w-6 text-destructive" />}
-            <span className={`text-lg font-black uppercase tracking-wider ${scores.interview_passed ? "text-success" : "text-destructive"}`}>
-              {scores.interview_passed ? "Would Move to Next Round 🎉" : "Didn't Pass This Round"}
+        <div className={`rounded-xl border p-5 ${scores.interview_passed ? "border-primary/30 bg-primary/5" : "border-destructive/30 bg-destructive/5"}`}>
+          <div className="flex items-center gap-2 mb-1">
+            {scores.interview_passed
+              ? <Briefcase className="h-5 w-5 text-primary" />
+              : <X className="h-5 w-5 text-destructive" />}
+            <span className={`text-base font-black uppercase tracking-wider ${scores.interview_passed ? "text-primary" : "text-destructive"}`}>
+              {scores.interview_passed ? "Would Move to Next Round" : "Didn't Pass This Round"}
             </span>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground">
             {scores.interview_passed
-              ? "Strong performance. Study the feedback to nail the next round too."
-              : "Review the weaknesses below. Every interview is practice for the real one."}
+              ? "Strong performance. Review the feedback to sharpen the next round."
+              : "Review the weaknesses carefully. Every mock interview is reps for the real one."}
           </p>
         </div>
       )}
 
-      {/* Meeting Setter result banner */}
       {isMeetingSetter && (
-        <div className={`rounded-lg border p-5 text-center ${scores.meeting_booked ? "border-success/30 bg-success/10" : "border-destructive/30 bg-destructive/10"}`}>
-          <div className="flex items-center justify-center gap-2 mb-1">
-            {scores.meeting_booked ? <Target className="h-6 w-6 text-success" /> : <X className="h-6 w-6 text-destructive" />}
-            <span className={`text-lg font-black uppercase tracking-wider ${scores.meeting_booked ? "text-success" : "text-destructive"}`}>
+        <div className={`rounded-xl border p-5 ${scores.meeting_booked ? "border-primary/30 bg-primary/5" : "border-destructive/30 bg-destructive/5"}`}>
+          <div className="flex items-center gap-2 mb-1">
+            {scores.meeting_booked ? <Target className="h-5 w-5 text-primary" /> : <X className="h-5 w-5 text-destructive" />}
+            <span className={`text-base font-black uppercase tracking-wider ${scores.meeting_booked ? "text-primary" : "text-destructive"}`}>
               {scores.meeting_booked ? "Meeting Booked 🎯" : "No Meeting Booked"}
             </span>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            {scores.meeting_booked ? "You earned the follow-up. That's the whole game." : "The prospect didn't commit. Review the feedback below."}
+          <p className="text-sm text-muted-foreground">
+            {scores.meeting_booked ? "You earned the follow-up. That's the whole game." : "The prospect didn't commit. See exactly why below."}
           </p>
         </div>
       )}
 
-      {/* Challenge Result Banner */}
       {challengeId && !isMeetingSetter && !isInterview && (
-        <div className={`rounded-lg border p-5 text-center ${scores.overall_score >= (challengePassScore || 70) ? "border-success/30 bg-success/10" : "border-destructive/30 bg-destructive/10"}`}>
-          <div className="flex items-center justify-center gap-2 mb-1">
-            {scores.overall_score >= (challengePassScore || 70) ? <Trophy className="h-6 w-6 text-success" /> : <X className="h-6 w-6 text-destructive" />}
-            <span className={`text-lg font-black uppercase tracking-wider ${scores.overall_score >= (challengePassScore || 70) ? "text-success" : "text-destructive"}`}>
+        <div className={`rounded-xl border p-5 ${scores.overall_score >= (challengePassScore || 70) ? "border-primary/30 bg-primary/5" : "border-destructive/30 bg-destructive/5"}`}>
+          <div className="flex items-center gap-2 mb-1">
+            {scores.overall_score >= (challengePassScore || 70)
+              ? <Trophy className="h-5 w-5 text-primary" />
+              : <X className="h-5 w-5 text-destructive" />}
+            <span className={`text-base font-black uppercase tracking-wider ${scores.overall_score >= (challengePassScore || 70) ? "text-primary" : "text-destructive"}`}>
               {scores.overall_score >= (challengePassScore || 70) ? "Challenge Passed" : "Challenge Failed"}
             </span>
           </div>
-          <p className="text-sm text-muted-foreground">{challengeName} - Need {challengePassScore}+ to pass</p>
+          <p className="text-sm text-muted-foreground">{challengeName} · Need {challengePassScore}+ to pass</p>
         </div>
       )}
 
-      {/* Score */}
-      <div className="rounded-lg border border-border bg-card p-8 text-center card-glow">
-        <div className="text-6xl font-black text-primary text-glow mb-2">{scores.overall_score}</div>
-        <p className="text-sm text-muted-foreground uppercase tracking-widest">Overall Score</p>
-        {xpEarned > 0 ? (
-          <div className="mt-4 flex items-center justify-center gap-2 text-accent font-bold">
-            <Zap className="h-5 w-5" />+{xpEarned} XP Earned
-          </div>
-        ) : (
-          <div className="mt-4 flex items-center justify-center gap-2 text-muted-foreground font-bold">
-            <Zap className="h-5 w-5" />Score 40+ to earn XP
-          </div>
-        )}
+      {/* Overall score */}
+      <div className="rounded-xl border border-border bg-card p-6 flex items-center justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-1">Overall Score</p>
+          <ScorePill value={scores.overall_score} />
+          {xpEarned > 0 && (
+            <div className="flex items-center gap-1.5 mt-2 text-sm text-amber-400 font-bold">
+              <Zap className="h-3.5 w-3.5" />+{xpEarned} XP
+            </div>
+          )}
+        </div>
+        <div className="text-right hidden sm:block">
+          <p className="text-xs text-muted-foreground">{scores.overall_score >= 70 ? "Strong" : scores.overall_score >= 50 ? "Developing" : "Needs Work"}</p>
+        </div>
       </div>
 
-      {/* Skills */}
-      <div className="rounded-lg border border-border bg-card p-6 space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-          {isInterview ? "Interview Breakdown" : isMeetingSetter ? "Cold Call Breakdown" : "Performance Breakdown"}
-        </h2>
+      {/* ── CALL SUMMARY ── */}
+      {scores.call_summary && (
+        <Section title="Call Summary" icon={FileText}>
+          <p className="text-sm text-foreground leading-relaxed">{scores.call_summary}</p>
+        </Section>
+      )}
 
+      {/* ── SCORE BREAKDOWN ── */}
+      <Section title="Score Breakdown" icon={BarChart3}>
         {isInterview ? (
           <>
             <SkillBar label="Communication" value={scores.communication_score ?? scores.clarity_score} />
@@ -332,49 +364,103 @@ export default function Breakdown() {
             <SkillBar label="Closing" value={scores.closing_score} />
           </>
         )}
-      </div>
+      </Section>
 
-      {/* Strengths & Weaknesses */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-lg border border-border bg-card p-5 space-y-3">
-          <h3 className="flex items-center gap-2 font-bold text-success text-sm uppercase tracking-widest">
-            <CheckCircle className="h-4 w-4" /> Strengths
-          </h3>
-          <ul className="space-y-2">
-            {scores.strengths.map((s, i) => <li key={i} className="text-sm text-foreground">• {s}</li>)}
-          </ul>
+      {/* ── STRENGTHS & WEAKNESSES ── */}
+      <Section title="Strengths & Weaknesses" icon={TrendingUp}>
+        <div className="space-y-4">
+          {scores.strengths.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-black uppercase tracking-widest text-primary">Strengths</p>
+              <ul className="space-y-2">
+                {scores.strengths.map((s, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-sm text-foreground">
+                    <CheckCircle className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                    {s}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {scores.weaknesses.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-black uppercase tracking-widest text-destructive">Weaknesses</p>
+              <ul className="space-y-2">
+                {scores.weaknesses.map((w, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-sm text-foreground">
+                    <XCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+                    {w}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {scores.missed_opportunities.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-black uppercase tracking-widest text-amber-400">Missed Opportunities</p>
+              <ul className="space-y-2">
+                {scores.missed_opportunities.map((m, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-sm text-foreground">
+                    <span className="text-amber-400 mt-0.5 flex-shrink-0">→</span>
+                    {m}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
-        <div className="rounded-lg border border-border bg-card p-5 space-y-3">
-          <h3 className="flex items-center gap-2 font-bold text-danger text-sm uppercase tracking-widest">
-            <XCircle className="h-4 w-4" /> Weaknesses
-          </h3>
-          <ul className="space-y-2">
-            {scores.weaknesses.map((w, i) => <li key={i} className="text-sm text-foreground">• {w}</li>)}
-          </ul>
-        </div>
-      </div>
+      </Section>
 
-      {/* Improvement Tip */}
-      <div className="rounded-lg border border-primary/20 bg-primary/5 p-5 space-y-3">
-        <h3 className="flex items-center gap-2 font-bold text-primary text-sm uppercase tracking-widest">
-          <TrendingUp className="h-4 w-4" /> {isInterview ? "Interview Coach's Verdict" : "Coach's Verdict"}
-        </h3>
-        <p className="text-sm text-foreground leading-relaxed font-semibold">{scores.improvement_tip}</p>
-        {scores.missed_opportunities.length > 0 && (
-          <div className="mt-3 space-y-1">
-            <p className="text-xs text-muted-foreground uppercase tracking-widest">Missed Opportunities</p>
-            {scores.missed_opportunities.map((m, i) => <p key={i} className="text-sm text-foreground">• {m}</p>)}
+      {/* ── CUSTOMER RESPONSE ── */}
+      {scores.customer_response && (
+        <Section title={isInterview ? "Interviewer Response" : "Prospect Response"} icon={MessageSquare} defaultOpen={false}>
+          <p className="text-sm text-foreground leading-relaxed">{scores.customer_response}</p>
+        </Section>
+      )}
+
+      {/* ── OVERALL IMPRESSION / VERDICT ── */}
+      {(scores.overall_impression || scores.improvement_tip) && (
+        <Section title="Coach's Verdict" icon={TrendingUp}>
+          {scores.overall_impression && (
+            <p className="text-sm text-foreground leading-relaxed">{scores.overall_impression}</p>
+          )}
+          {scores.improvement_tip && (
+            <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 mt-2">
+              <p className="text-xs font-black uppercase tracking-widest text-primary mb-1.5">Next call: do this</p>
+              <p className="text-sm font-semibold text-foreground leading-relaxed">{scores.improvement_tip}</p>
+            </div>
+          )}
+        </Section>
+      )}
+
+      {/* ── TRANSCRIPT ── */}
+      <Section title="Transcript" icon={MessageSquare} defaultOpen={false}>
+        {transcript.length === 0 ? (
+          <p className="text-sm text-muted-foreground/40">No transcript available.</p>
+        ) : (
+          <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+            {transcript.map((msg: any, i: number) => (
+              <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[85%] rounded-xl px-4 py-2.5 text-sm leading-relaxed ${
+                  msg.role === "user"
+                    ? "gradient-primary text-primary-foreground"
+                    : "bg-secondary text-foreground"
+                }`}>
+                  {msg.content}
+                </div>
+              </div>
+            ))}
           </div>
         )}
-      </div>
+      </Section>
 
       {/* Actions */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 pt-2">
         <Link
           to={challengeId ? "/challenges" : "/scenarios"}
           className="flex-1 flex items-center justify-center gap-2 rounded-lg gradient-primary py-3 font-bold text-primary-foreground hover:opacity-90 transition-opacity"
         >
-          {challengeId ? "Back to Challenges" : isInterview ? "Practice Again" : "Train Again"} <ArrowRight className="h-4 w-4" />
+          {isInterview ? "Practice Again" : "Train Again"} <ArrowRight className="h-4 w-4" />
         </Link>
         <Link
           to="/"

@@ -7,6 +7,7 @@ import { PERSONAS, INDUSTRIES, DIFFICULTIES } from "@/lib/game-data";
 import {
   Eye, Zap, Calendar, Clock, Search, Filter, X,
   ChevronLeft, ChevronRight, Mic, Headphones, Users,
+  FileText, MessageSquare, TrendingUp, CheckCircle, XCircle,
 } from "lucide-react";
 import AudioPlayer from "@/components/AudioPlayer";
 
@@ -31,6 +32,10 @@ interface CallRecord {
   simulation_mode?: string;
   recording_url?: string | null;
   user_id?: string;
+  // Deep analysis
+  call_summary?: string | null;
+  customer_response?: string | null;
+  overall_impression?: string | null;
 }
 
 const PAGE_SIZE = 15;
@@ -62,8 +67,10 @@ function formatDuration(s: number) {
   return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
 }
 
-/* ── Detail panel ── */
+type DetailTab = "summary" | "scores" | "transcript";
+
 function CallDetail({ call, onClose }: { call: CallRecord; onClose: () => void }) {
+  const [tab, setTab] = useState<DetailTab>("summary");
   const getPersonaLabel = (id: string) => PERSONAS.find((p) => p.id === id)?.label || id;
   const getIndustryLabel = (id: string) => INDUSTRIES.find((i) => i.id === id)?.label || id;
 
@@ -74,9 +81,17 @@ function CallDetail({ call, onClose }: { call: CallRecord; onClose: () => void }
     { label: "Closing", value: call.closing_score },
   ];
 
+  const TABS: { key: DetailTab; label: string }[] = [
+    { key: "summary", label: "Analysis" },
+    { key: "scores", label: "Scores" },
+    { key: "transcript", label: "Transcript" },
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-2xl mx-4 rounded-xl border border-border bg-card shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in px-4">
+      <div className="relative w-full max-w-2xl rounded-xl border border-border bg-card shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+
+        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
           <div>
             <h2 className="text-base font-black text-foreground">
@@ -84,117 +99,180 @@ function CallDetail({ call, onClose }: { call: CallRecord; onClose: () => void }
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
               {formatDate(call.created_at)} at {formatTime(call.created_at)} · {formatDuration(call.duration)}
+              {call.simulation_mode && call.simulation_mode !== "discovery" && (
+                <span className="ml-2 text-[10px] border border-border rounded px-1.5 py-0.5 uppercase font-bold text-muted-foreground/50">
+                  {call.simulation_mode.replace("-", " ")}
+                </span>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-3">
             <span className={`text-2xl font-black tabular-nums ${scoreColor(call.overall_score)}`}>
               {call.overall_score}
             </span>
-            <button
-              onClick={onClose}
-              className="rounded-lg p-1.5 text-muted-foreground/50 hover:text-foreground hover:bg-secondary transition-colors"
-            >
+            <button onClick={onClose} className="rounded-lg p-1.5 text-muted-foreground/50 hover:text-foreground hover:bg-secondary transition-colors">
               <X className="h-4 w-4" />
             </button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {call.recording_url ? (
-            <div className="space-y-2">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                <Headphones className="h-3.5 w-3.5" /> Call Recording
-              </p>
-              <AudioPlayer callId={call.id} storagePath={call.recording_url} duration={call.duration} />
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed border-border bg-secondary/10 px-4 py-3 flex items-center gap-2">
-              <Headphones className="h-4 w-4 text-muted-foreground/30" />
-              <p className="text-xs text-muted-foreground/50">
-                No recording − recordings are saved automatically on new calls.
-              </p>
-            </div>
-          )}
+        {/* Tabs */}
+        <div className="flex border-b border-border flex-shrink-0 px-1">
+          {TABS.map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              className={`px-5 py-3 text-sm font-semibold transition-colors border-b-2 -mb-px ${tab === t.key ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            {scoreRows.map((s) => (
-              <div key={s.label} className="rounded-lg border border-border bg-secondary/20 px-4 py-3 space-y-1.5">
-                <p className="text-xs text-muted-foreground">{s.label}</p>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${s.value}%`,
-                        background: s.value >= 70 ? "hsl(var(--primary))" : s.value >= 50 ? "hsl(40 95% 60%)" : "hsl(var(--destructive))",
-                      }}
-                    />
-                  </div>
-                  <span className={`text-sm font-bold tabular-nums ${scoreColor(s.value)}`}>{s.value}</span>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+
+          {/* ── ANALYSIS TAB ── */}
+          {tab === "summary" && (
+            <div className="space-y-5">
+              {/* Recording */}
+              {call.recording_url ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                    <Headphones className="h-3.5 w-3.5" /> Call Recording
+                  </p>
+                  <AudioPlayer callId={call.id} storagePath={call.recording_url} duration={call.duration} />
                 </div>
-              </div>
-            ))}
-          </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-border bg-secondary/10 px-4 py-3 flex items-center gap-2">
+                  <Headphones className="h-4 w-4 text-muted-foreground/30" />
+                  <p className="text-xs text-muted-foreground/40">No recording available for this session.</p>
+                </div>
+              )}
 
-          {call.improvement_tip && (
-            <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
-              <p className="text-xs font-bold uppercase tracking-widest text-primary mb-1">Coach's Tip</p>
-              <p className="text-sm text-foreground">{call.improvement_tip}</p>
+              {/* Call Summary */}
+              {call.call_summary && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5" /> Call Summary
+                  </p>
+                  <p className="text-sm text-foreground leading-relaxed">{call.call_summary}</p>
+                </div>
+              )}
+
+              {/* Strengths */}
+              {call.strengths?.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-widest text-primary">Strengths</p>
+                  <ul className="space-y-2">
+                    {call.strengths.map((s, i) => (
+                      <li key={i} className="flex items-start gap-2.5 text-sm text-foreground">
+                        <CheckCircle className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                        {s}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Weaknesses */}
+              {call.weaknesses?.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-widest text-destructive">Weaknesses</p>
+                  <ul className="space-y-2">
+                    {call.weaknesses.map((w, i) => (
+                      <li key={i} className="flex items-start gap-2.5 text-sm text-foreground">
+                        <XCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+                        {w}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Missed opportunities */}
+              {call.missed_opportunities?.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-widest text-amber-400">Missed Opportunities</p>
+                  <ul className="space-y-2">
+                    {call.missed_opportunities.map((m, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                        <span className="text-amber-400 flex-shrink-0 mt-0.5">→</span>
+                        {m}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Prospect response */}
+              {call.customer_response && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                    <MessageSquare className="h-3.5 w-3.5" /> Prospect Response
+                  </p>
+                  <p className="text-sm text-foreground leading-relaxed">{call.customer_response}</p>
+                </div>
+              )}
+
+              {/* Overall impression */}
+              {call.overall_impression && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                    <TrendingUp className="h-3.5 w-3.5" /> Overall Impression
+                  </p>
+                  <p className="text-sm text-foreground leading-relaxed">{call.overall_impression}</p>
+                </div>
+              )}
+
+              {/* Coach tip */}
+              {call.improvement_tip && (
+                <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+                  <p className="text-xs font-bold uppercase tracking-widest text-primary mb-1.5">Next call: do this</p>
+                  <p className="text-sm font-semibold text-foreground leading-relaxed">{call.improvement_tip}</p>
+                </div>
+              )}
+
+              {/* Fallback if no analysis fields */}
+              {!call.call_summary && !call.overall_impression && !call.improvement_tip && (
+                <p className="text-sm text-muted-foreground/40 text-center py-6">
+                  Detailed analysis is available on calls made after the latest update.
+                </p>
+              )}
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            {call.strengths?.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-widest text-primary">Strengths</p>
-                <ul className="space-y-1">
-                  {call.strengths.map((s, i) => (
-                    <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                      <span className="text-primary mt-0.5">·</span>{s}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {call.weaknesses?.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-widest text-destructive">Weaknesses</p>
-                <ul className="space-y-1">
-                  {call.weaknesses.map((w, i) => (
-                    <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                      <span className="text-destructive mt-0.5">·</span>{w}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
+          {/* ── SCORES TAB ── */}
+          {tab === "scores" && (
+            <div className="grid grid-cols-2 gap-3">
+              {scoreRows.map((s) => (
+                <div key={s.label} className="rounded-lg border border-border bg-secondary/20 px-4 py-3 space-y-2">
+                  <p className="text-xs text-muted-foreground">{s.label}</p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${s.value}%`, background: s.value >= 70 ? "hsl(var(--primary))" : s.value >= 50 ? "hsl(40 95% 60%)" : "hsl(var(--destructive))" }} />
+                    </div>
+                    <span className={`text-sm font-bold tabular-nums ${scoreColor(s.value)}`}>{s.value}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
-          {call.missed_opportunities?.length > 0 && (
+          {/* ── TRANSCRIPT TAB ── */}
+          {tab === "transcript" && (
             <div className="space-y-2">
-              <p className="text-xs font-bold uppercase tracking-widest text-amber-400">Missed Opportunities</p>
-              <ul className="space-y-1">
-                {call.missed_opportunities.map((m, i) => (
-                  <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                    <span className="text-amber-400 mt-0.5">·</span>{m}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {call.transcript?.length > 0 && (
-            <div className="space-y-3">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Transcript</p>
-              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {(call.transcript as any[]).map((msg: any, i: number) => (
+              {call.transcript?.length > 0 ? (
+                call.transcript.map((msg: any, i: number) => (
                   <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${msg.role === "user" ? "gradient-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
+                    <div className={`max-w-[80%] rounded-xl px-4 py-2.5 text-sm leading-relaxed ${
+                      msg.role === "user" ? "gradient-primary text-primary-foreground" : "bg-secondary text-foreground"
+                    }`}>
                       {msg.content}
                     </div>
                   </div>
-                ))}
-              </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground/40 text-center py-6">No transcript available.</p>
+              )}
             </div>
           )}
         </div>
@@ -223,7 +301,6 @@ export default function CallHistory() {
 
   async function fetchCalls() {
     setLoading(true);
-
     let query = supabase
       .from("call_history")
       .select("*")
@@ -263,10 +340,7 @@ export default function CallHistory() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const hasFilters = search || filterIndustry || filterDifficulty || filterMode;
-
-  const clearFilters = () => {
-    setSearch(""); setFilterIndustry(""); setFilterDifficulty(""); setFilterMode("");
-  };
+  const clearFilters = () => { setSearch(""); setFilterIndustry(""); setFilterDifficulty(""); setFilterMode(""); };
 
   const uniqueIndustries = [...new Set(calls.map((c) => c.industry))];
   const uniqueModes = [...new Set(calls.map((c) => c.simulation_mode || "discovery"))];
@@ -275,11 +349,8 @@ export default function CallHistory() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl space-y-6 animate-slide-up">
-      {selectedCall && (
-        <CallDetail call={selectedCall} onClose={() => setSelectedCall(null)} />
-      )}
+      {selectedCall && <CallDetail call={selectedCall} onClose={() => setSelectedCall(null)} />}
 
-      {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -297,24 +368,17 @@ export default function CallHistory() {
             {isTeamView && ` · ${memberIds.length} reps`}
           </p>
         </div>
-        <Link
-          to="/scenarios"
-          className="flex items-center gap-2 rounded-lg gradient-primary px-4 py-2.5 text-sm font-black uppercase tracking-wider text-primary-foreground hover:opacity-90 transition-opacity"
-        >
+        <Link to="/scenarios" className="flex items-center gap-2 rounded-lg gradient-primary px-4 py-2.5 text-sm font-black uppercase tracking-wider text-primary-foreground hover:opacity-90 transition-opacity">
           <Mic className="h-4 w-4" /> New call
         </Link>
       </div>
 
-      {/* Search + filters */}
+      {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search industry or persona…"
-            className="w-full rounded-lg border border-border bg-secondary/30 pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
-          />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search industry or persona…"
+            className="w-full rounded-lg border border-border bg-secondary/30 pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors" />
         </div>
         <select value={filterIndustry} onChange={(e) => setFilterIndustry(e.target.value)} className={selectClass}>
           <option value="">All industries</option>
@@ -342,9 +406,7 @@ export default function CallHistory() {
         </div>
       ) : calls.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-card/40 py-20 text-center space-y-4">
-          <p className="text-muted-foreground">
-            {isTeamView ? "No team calls yet. Get your reps in the arena." : "No calls yet. Get in the arena."}
-          </p>
+          <p className="text-muted-foreground">{isTeamView ? "No team calls yet." : "No calls yet. Get in the arena."}</p>
           <Link to="/scenarios" className="text-primary font-semibold hover:underline text-sm">Start training →</Link>
         </div>
       ) : filtered.length === 0 ? (
@@ -364,11 +426,8 @@ export default function CallHistory() {
             {paginated.map((call) => {
               const diff = getDiff(call.difficulty);
               return (
-                <div
-                  key={call.id}
-                  onClick={() => setSelectedCall(call)}
-                  className="grid grid-cols-1 md:grid-cols-[1fr_100px_72px_72px_72px_72px_80px_24px_40px] gap-3 px-5 py-3.5 hover:bg-secondary/20 transition-colors cursor-pointer items-center"
-                >
+                <div key={call.id} onClick={() => setSelectedCall(call)}
+                  className="grid grid-cols-1 md:grid-cols-[1fr_100px_72px_72px_72px_72px_80px_24px_40px] gap-3 px-5 py-3.5 hover:bg-secondary/20 transition-colors cursor-pointer items-center">
                   <div className="flex flex-col gap-0.5 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-bold text-foreground truncate">{getIndustryLabel(call.industry)}</span>
@@ -392,25 +451,15 @@ export default function CallHistory() {
                       {call.overall_score}
                     </span>
                   </div>
-                  <div className="hidden md:block">
-                    <p className={`text-sm font-bold tabular-nums ${scoreColor(call.objection_handling_score)}`}>{call.objection_handling_score}</p>
-                  </div>
-                  <div className="hidden md:block">
-                    <p className={`text-sm font-bold tabular-nums ${scoreColor(call.confidence_score)}`}>{call.confidence_score}</p>
-                  </div>
-                  <div className="hidden md:block">
-                    <p className={`text-sm font-bold tabular-nums ${scoreColor(call.clarity_score)}`}>{call.clarity_score}</p>
-                  </div>
+                  <div className="hidden md:block"><p className={`text-sm font-bold tabular-nums ${scoreColor(call.objection_handling_score)}`}>{call.objection_handling_score}</p></div>
+                  <div className="hidden md:block"><p className={`text-sm font-bold tabular-nums ${scoreColor(call.confidence_score)}`}>{call.confidence_score}</p></div>
+                  <div className="hidden md:block"><p className={`text-sm font-bold tabular-nums ${scoreColor(call.clarity_score)}`}>{call.clarity_score}</p></div>
                   <div className="hidden md:flex items-center gap-1 text-muted-foreground">
                     <Clock className="h-3 w-3 flex-shrink-0" />
                     <p className="text-xs tabular-nums">{formatDuration(call.duration)}</p>
                   </div>
                   <div className="hidden md:flex items-center justify-center">
-                    {call.recording_url && (
-                      <span title="Recording available">
-                        <Headphones className="h-3.5 w-3.5 text-primary/50" />
-                      </span>
-                    )}
+                    {call.recording_url && <span title="Recording available"><Headphones className="h-3.5 w-3.5 text-primary/50" /></span>}
                   </div>
                   <div className="hidden md:flex justify-end">
                     <Eye className="h-3.5 w-3.5 text-muted-foreground/30" />
@@ -422,27 +471,29 @@ export default function CallHistory() {
         </div>
       )}
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
             Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
           </p>
           <div className="flex items-center gap-2">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+              className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
               <ChevronLeft className="h-3.5 w-3.5" /> Prev
             </button>
             <div className="flex items-center gap-1">
               {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
                 const p = totalPages <= 7 ? i + 1 : page <= 4 ? i + 1 : page >= totalPages - 3 ? totalPages - 6 + i : page - 3 + i;
                 return (
-                  <button key={p} onClick={() => setPage(p)} className={`w-8 h-8 rounded-lg text-sm font-bold transition-colors ${p === page ? "gradient-primary text-primary-foreground" : "border border-border text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
+                  <button key={p} onClick={() => setPage(p)}
+                    className={`w-8 h-8 rounded-lg text-sm font-bold transition-colors ${p === page ? "gradient-primary text-primary-foreground" : "border border-border text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
                     {p}
                   </button>
                 );
               })}
             </div>
-            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+              className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
               Next <ChevronRight className="h-3.5 w-3.5" />
             </button>
           </div>

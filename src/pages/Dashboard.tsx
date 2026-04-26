@@ -199,7 +199,7 @@ export default function Dashboard() {
     <div className="container mx-auto px-4 py-8 max-w-6xl space-y-8 animate-slide-up">
 
       {/* ── Header ── */}
-      <div className="flex items-start justify-between flex-wrap gap-4">
+      <div className="flex items-start justify-between flex-wrap margin-8 gap-4">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-black text-foreground tracking-tight">{greeting}</h1>
