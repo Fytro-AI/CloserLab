@@ -360,11 +360,12 @@ export default function TeamDashboard() {
   async function sendInvite() {
     if (!inviteEmail.trim() || !user) return;
     setInviteBusy(true);
-
-    // Check via security-definer RPC − direct RLS query only returns the caller's own row
+    setInviteError(null);
+  
+    // 1. Check the user exists
     const { data: isRegistered, error: checkError } = await (supabase as any)
       .rpc("check_email_registered", { p_email: inviteEmail.trim().toLowerCase() });
-
+  
     if (checkError || !isRegistered) {
       toast.error("Not signed up yet", {
         description: `${inviteEmail.trim()} doesn't have a CloserLab account. Ask them to sign up first.`,
@@ -372,17 +373,36 @@ export default function TeamDashboard() {
       setInviteBusy(false);
       return;
     }
-
-    const { error } = await (supabase as any)
+  
+    // 2. Insert the invite row
+    const { data: newInvite, error: insertError } = await (supabase as any)
       .from("team_invites")
-      .insert({ team_id: profile?.team_id, invited_by: user.id, email: inviteEmail.trim() });
-
-    if (!error) {
-      setInviteSent(true);
-      setInviteEmail("");
-      setTimeout(() => setInviteSent(false), 3000);
-      load();
+      .insert({ team_id: profile?.team_id, invited_by: user.id, email: inviteEmail.trim() })
+      .select("id")
+      .single();
+  
+    if (insertError || !newInvite) {
+      toast.error("Failed to create invite");
+      setInviteBusy(false);
+      return;
     }
+  
+    // 3. Fire the email
+    const { error: emailError } = await supabase.functions.invoke("send-team-invite", {
+      body: { invite_id: newInvite.id },
+    });
+  
+    if (emailError) {
+      // Invite row exists, email just failed — still show partial success
+      toast.warning("Invite created but email failed to send. Copy the link manually.");
+    } else {
+      toast.success(`Invite sent to ${inviteEmail.trim()}`);
+    }
+  
+    setInviteSent(true);
+    setInviteEmail("");
+    setTimeout(() => setInviteSent(false), 3000);
+    load();
     setInviteBusy(false);
   }
 

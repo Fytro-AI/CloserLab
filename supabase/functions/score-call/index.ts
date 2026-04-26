@@ -48,16 +48,14 @@ serve(async (req) => {
 
     if (!Array.isArray(transcript) || transcript.length === 0 || transcript.length > 200) {
       return new Response(JSON.stringify({ error: "Invalid transcript" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     for (const m of transcript) {
       if (!m.role || !["user", "assistant"].includes(m.role) || typeof m.content !== "string" || m.content.length > 5000) {
         return new Response(JSON.stringify({ error: "Invalid transcript format" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
     }
@@ -70,14 +68,16 @@ serve(async (req) => {
     const userMessages = transcript.filter((m: { role: string }) => m.role === "user");
     if (userMessages.length === 0) {
       return new Response(JSON.stringify({ error: "No speech detected. Try the call again and speak into your mic." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    const sellerLabel = safeMode === "interview" ? "CANDIDATE" : "SELLER";
+    const buyerLabel = safeMode === "interview" ? "INTERVIEWER" : "BUYER";
+
     const transcriptText = transcript
       .map((m: { role: string; content: string }) =>
-        `${m.role === "user" ? (safeMode === "interview" ? "CANDIDATE" : "SELLER") : (safeMode === "interview" ? "INTERVIEWER" : "BUYER")}: ${m.content}`
+        `${m.role === "user" ? sellerLabel : buyerLabel}: ${m.content}`
       )
       .join("\n");
 
@@ -86,9 +86,10 @@ serve(async (req) => {
     if (safeMode === "interview") {
       const role = interviewRole || "SDR";
       const company = interviewCompany || "the company";
-      systemPrompt = `You are an elite interview coach analyzing a mock job interview transcript. The candidate was interviewing for a ${role} position at ${company}.
 
-You must respond with ONLY a valid JSON object (no markdown, no code blocks, no extra text). Use this exact structure:
+      systemPrompt = `You are an elite interview coach analyzing a mock job interview. The candidate interviewed for a ${role} position at ${company}.
+
+Return ONLY a valid JSON object. No markdown, no code blocks, no extra text.
 
 {
   "overall_score": <0-100>,
@@ -100,43 +101,35 @@ You must respond with ONLY a valid JSON object (no markdown, no code blocks, no 
   "sales_knowledge_score": <0-100>,
   "self_awareness_score": <0-100>,
   "interview_passed": <true|false>,
-  "strengths": ["<specific strength 1>", "<specific strength 2>"],
-  "weaknesses": ["<specific weakness 1>", "<specific weakness 2>"],
-  "missed_opportunities": ["<specific missed opportunity>"],
-  "improvement_tip": "<one direct coaching tip for the next interview>"
+  "call_summary": "<3-5 sentence paragraph describing the interview context, what stage it reached, and the overall flow. Reference specific moments from the transcript.>",
+  "customer_response": "<2-3 sentences describing how the INTERVIEWER responded throughout — were they engaged, skeptical, impressed, frustrated? Quote or reference specific things they said.>",
+  "overall_impression": "<3-4 sentence final verdict paragraph. Was this a pass or fail and specifically why? What was the single thing that hurt or helped most? Be direct and honest.>",
+  "strengths": [
+    "<specific strength referencing an exact moment in the transcript>",
+    "<specific strength referencing an exact moment in the transcript>"
+  ],
+  "weaknesses": [
+    "<specific weakness with exact quote or moment from transcript>",
+    "<specific weakness with exact quote or moment from transcript>"
+  ],
+  "missed_opportunities": [
+    "<specific missed opportunity — what could have been said and when>"
+  ],
+  "improvement_tip": "<one direct, specific, actionable coaching instruction for the next interview. Reference what they did wrong and exactly what to do instead.>"
 }
 
-INTERVIEW SCORING CRITERIA:
+SCORING:
+- communication_score: Structure, clarity, conciseness. 90+ = STAR method, zero rambling. Below 50 = vague and disorganized.
+- sales_knowledge_score: Real sales terminology, metrics, process knowledge. Below 50 = generic answers with no substance.
+- self_awareness_score: Genuine, honest answers about weaknesses with real improvement plans. Below 50 = clichés like "I work too hard".
+- confidence_score: Came across assured without being arrogant.
+- objection_handling_score: When the interviewer pushed back, did they handle it well or fold?
+- clarity_score: Were answers specific (real examples) or vague and generic?
+- closing_score: Did they ask good questions, show real interest, close professionally?
+- interview_passed: true only if genuinely strong enough for the next round. Be harsh — most candidates score 40-65.
 
-communication_score (0-100): Was the candidate clear, concise, and structured in their answers?
-- 90-100: Every answer was structured (STAR method or similar), no rambling, easy to follow.
-- 70-89: Mostly clear with occasional tangents.
-- Below 50: Vague, disorganized, hard to follow.
+The call_summary, customer_response, and overall_impression fields MUST be full prose paragraphs. They must reference specific things said in the transcript. No bullet points. No generic filler.`;
 
-sales_knowledge_score (0-100): Did the candidate demonstrate real sales knowledge?
-- 90-100: Used correct terminology, showed understanding of pipeline, metrics, objection handling.
-- 70-89: Decent knowledge with some gaps.
-- Below 50: Generic answers, no real sales understanding.
-
-self_awareness_score (0-100): Did the candidate show genuine self-awareness about their strengths and weaknesses?
-- 90-100: Gave honest, specific, and constructive answers about weaknesses with clear improvement plans.
-- 70-89: Decent self-awareness but slightly rehearsed.
-- Below 50: Generic "I work too hard" type answers or zero self-reflection.
-
-confidence_score (0-100): Did the candidate come across as confident without being arrogant?
-
-objection_handling_score (0-100): When the interviewer pushed back or challenged answers, did the candidate handle it well?
-
-clarity_score (0-100): Were their answers specific and concrete (real examples) rather than generic and vague?
-
-closing_score (0-100): Did the candidate ask good questions, show genuine interest in the role, and close the interview professionally?
-
-interview_passed: true if the candidate gave a strong enough performance that you'd move them to the next round. Be harsh — most candidates score 40-65.
-
-SCORING PHILOSOPHY:
-- Be HONEST. Generic answers = low scores. Specific, real examples = high scores.
-- Reference SPECIFIC moments from the transcript.
-- The improvement_tip should be one actionable thing to fix before the next interview.`;
     } else if (safeMode === "meeting-setter") {
       const lastAssistantMessages = transcript
         .filter((m: { role: string }) => m.role === "assistant")
@@ -147,9 +140,9 @@ SCORING PHILOSOPHY:
         /\b(sure|sounds good|let's do it|book|schedule|calendar|send me|tuesday|wednesday|thursday|monday|friday|next week|30 minutes|15 minutes|20 minutes|works for me|that works|i can do|let's set)\b/.test(msg)
       );
 
-      systemPrompt = `You are an elite cold call coach analyzing a meeting-setter call transcript. The seller's ONLY goal was to book a follow-up meeting with a busy prospect who picked up a cold call.
+      systemPrompt = `You are an elite cold call coach analyzing a meeting-setter call. The seller's only goal was to book a follow-up meeting from a cold call.
 
-You must respond with ONLY a valid JSON object (no markdown, no code blocks, no extra text). Use this exact structure:
+Return ONLY a valid JSON object. No markdown, no code blocks, no extra text.
 
 {
   "overall_score": <0-100>,
@@ -161,17 +154,30 @@ You must respond with ONLY a valid JSON object (no markdown, no code blocks, no 
   "clarity_of_ask_score": <0-100>,
   "booking_attempt_score": <0-100>,
   "meeting_booked": ${meetingBooked},
-  "strengths": ["<specific strength 1>", "<specific strength 2>"],
-  "weaknesses": ["<specific weakness 1>", "<specific weakness 2>"],
-  "missed_opportunities": ["<specific missed opportunity>"],
-  "improvement_tip": "<one direct, aggressive coaching tip>"
+  "call_summary": "<3-5 sentence paragraph. How did the call open? What value proposition did the seller use? What objections came up? How did it end? Reference specific transcript moments.>",
+  "customer_response": "<2-3 sentences describing how the PROSPECT responded — were they hostile, curious, polite but dismissive? Quote or closely reference specific things they actually said.>",
+  "overall_impression": "<3-4 sentence verdict. Was the meeting booked or not and exactly why? What was the decisive moment? Be direct.>",
+  "strengths": [
+    "<specific strength with exact moment from transcript>",
+    "<specific strength with exact moment from transcript>"
+  ],
+  "weaknesses": [
+    "<specific weakness with exact quote or moment>",
+    "<specific weakness with exact quote or moment>"
+  ],
+  "missed_opportunities": [
+    "<exact moment where a different response would have changed the outcome>"
+  ],
+  "improvement_tip": "<one direct actionable instruction. Quote what they said, then give the exact words they should have said instead.>"
 }
 
-MEETING SETTER SCORING: Be HARSH. Score 80+ only if they named a specific pain, asked cleanly, handled pushback. Score below 30 if they pitched features on a cold call or never asked for a meeting.`;
-    } else {
-      systemPrompt = `You are an elite sales coach analyzing a sales call transcript. The seller was practicing against a ${safePersona} buyer in the ${safeIndustry} industry at ${safeDifficulty} difficulty.
+Be HARSH. Score 80+ only if they named a specific pain, asked cleanly, handled every pushback. Score below 30 if they pitched features or never asked for the meeting. The call_summary, customer_response, and overall_impression MUST be full prose paragraphs referencing real transcript moments.`;
 
-You must respond with ONLY a valid JSON object (no markdown, no code blocks, no extra text). Use this exact structure:
+    } else {
+      // Discovery call
+      systemPrompt = `You are an elite sales coach analyzing a discovery call practice session. The seller practiced against a ${safePersona} buyer in the ${safeIndustry} industry at ${safeDifficulty} difficulty.
+
+Return ONLY a valid JSON object. No markdown, no code blocks, no extra text.
 
 {
   "overall_score": <0-100>,
@@ -179,13 +185,31 @@ You must respond with ONLY a valid JSON object (no markdown, no code blocks, no 
   "objection_handling_score": <0-100>,
   "clarity_score": <0-100>,
   "closing_score": <0-100>,
-  "strengths": ["<specific strength 1>", "<specific strength 2>"],
-  "weaknesses": ["<specific weakness 1>", "<specific weakness 2>"],
-  "missed_opportunities": ["<specific missed opportunity>"],
-  "improvement_tip": "<one direct, aggressive coaching tip>"
+  "call_summary": "<3-5 sentence paragraph. Describe the call context, how the conversation flowed, what the seller was selling, what objections came up, and how the call ended. Reference specific moments from the transcript.>",
+  "customer_response": "<2-3 sentences describing how the BUYER responded throughout the call — were they resistant, gradually warmed up, stayed cold, asked questions? Quote or closely reference specific things they actually said from the transcript.>",
+  "overall_impression": "<3-4 sentence final verdict. Was this call a success or failure and specifically why? What was the single moment that defined the outcome? Be blunt.>",
+  "strengths": [
+    "<specific strength. Quote or reference the exact moment in the transcript where this showed up.>",
+    "<specific strength. Quote or reference the exact moment in the transcript where this showed up.>"
+  ],
+  "weaknesses": [
+    "<specific weakness. Quote the exact words or moment that illustrates this. Be specific, not generic.>",
+    "<specific weakness. Quote the exact words or moment that illustrates this. Be specific, not generic.>"
+  ],
+  "missed_opportunities": [
+    "<a specific moment in the transcript where a different response would have changed the direction of the call. Quote what was said and what should have been said instead.>"
+  ],
+  "improvement_tip": "<one direct, aggressive coaching instruction. Quote what they actually said, then give the exact words or approach they should use next time. No vague advice.>"
 }
 
-SCORING GUIDELINES: Be HARSH but fair. Most calls score 40-70. Score above 80 only for genuinely excellent performance. Each strength/weakness must reference SPECIFIC moments.`;
+SCORING:
+- Be HARSH but fair. Most calls score 40-70. Score 80+ only for genuinely excellent performance.
+- objection_handling_score: Did they acknowledge, reframe, and advance past objections, or did they fold, repeat themselves, or go defensive?
+- confidence_score: Did they sound certain and in control, or hesitant and apologetic?
+- clarity_score: Was their pitch/value proposition specific and concrete, or vague and full of buzzwords?
+- closing_score: Did they attempt to move the conversation forward with a clear next step?
+
+CRITICAL: The call_summary, customer_response, and overall_impression MUST be full prose paragraphs. They MUST reference specific things actually said in the transcript. Generic, vague analysis is not acceptable. If the seller said something specific, quote it or closely paraphrase it.`;
     }
 
     const aiResp = await client.chat.completions.create({
@@ -194,11 +218,11 @@ SCORING GUIDELINES: Be HARSH but fair. Most calls score 40-70. Score above 80 on
         { role: "system", content: systemPrompt },
         {
           role: "user",
-          content: `Here is the full transcript:\n\n${transcriptText}\n\nAnalyze this and return the JSON scoring.`,
+          content: `TRANSCRIPT:\n\n${transcriptText}\n\nAnalyze and return the JSON.`,
         },
       ],
-      temperature: 0.3,
-      max_tokens: 1000,
+      temperature: 0.25,
+      max_tokens: 1800,
     });
 
     const content = aiResp.choices?.[0]?.message?.content ?? "";
@@ -207,8 +231,7 @@ SCORING GUIDELINES: Be HARSH but fair. Most calls score 40-70. Score above 80 on
     if (!jsonMatch) {
       console.error("AI response could not be parsed:", content);
       return new Response(JSON.stringify({ error: "Failed to parse AI scoring" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -221,8 +244,7 @@ SCORING GUIDELINES: Be HARSH but fair. Most calls score 40-70. Score above 80 on
   } catch (e) {
     console.error("score-call error:", e);
     return new Response(JSON.stringify({ error: "An internal error occurred. Please try again." }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

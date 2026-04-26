@@ -1,5 +1,5 @@
-  import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@18.5.0";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
@@ -8,7 +8,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Per-seat team price — €29.99/seat/month
 const TEAM_SEAT_PRICE_ID_MONTHLY = "price_1TKbYMPNpQaZotKHxkabbGSp";
 const TEAM_SEAT_PRICE_ID_YEARLY = "price_1TKczKPNpQaZotKHP7GWDSPQ";
 const TEAM_PRICE_IDS = new Set([TEAM_SEAT_PRICE_ID_MONTHLY, TEAM_SEAT_PRICE_ID_YEARLY]);
@@ -47,15 +46,14 @@ serve(async (req) => {
       });
     }
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
     const body = await req.json();
     const { priceId, seats } = body;
 
-    // ── TEAM SEAT CHECKOUT ────────────────────────────────────────────────────
+    // -- TEAM SEAT CHECKOUT
     if (TEAM_PRICE_IDS.has(priceId)) {
       const seatCount = Math.max(1, Math.min(500, parseInt(seats) || 1));
 
-      // Verify the user is a team owner or admin
       const supabaseAdmin = createClient(
         Deno.env.get("SUPABASE_URL") ?? "",
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -74,41 +72,37 @@ serve(async (req) => {
         });
       }
 
-      if (![ "owner", "administrator" ].includes(profile.team_role)) {
+      if (!["owner", "administrator"].includes(profile.team_role)) {
         return new Response(JSON.stringify({ error: "Only team owners or administrators can purchase a team subscription." }), {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // Get or create Stripe customer, store against the TEAM not the user
       const { data: team } = await supabaseAdmin
         .from("teams")
         .select("id, name, stripe_customer_id, stripe_subscription_id")
         .eq("id", profile.team_id)
         .single();
 
-      let customerId = team?.stripe_customer_id;
+      let teamCustomerId = team?.stripe_customer_id;
 
-      if (!customerId) {
-        // Create a Stripe customer representing the team (billed to the owner's email)
+      if (!teamCustomerId) {
         const customer = await stripe.customers.create({
           email: user.email,
           name: team?.name ?? "CloserLab Team",
           metadata: { team_id: profile.team_id, owner_user_id: user.id },
         });
-        customerId = customer.id;
+        teamCustomerId = customer.id;
 
-        // Persist immediately so concurrent requests don't create duplicates
         await supabaseAdmin
           .from("teams")
-          .update({ stripe_customer_id: customerId })
+          .update({ stripe_customer_id: teamCustomerId })
           .eq("id", profile.team_id);
       }
 
-      // If they already have an active subscription, send them to the portal instead
       if (team?.stripe_subscription_id) {
         const portalSession = await stripe.billingPortal.sessions.create({
-          customer: customerId,
+          customer: teamCustomerId,
           return_url: `${req.headers.get("origin")}/team`,
         });
         return new Response(JSON.stringify({ url: portalSession.url }), {
@@ -117,16 +111,12 @@ serve(async (req) => {
         });
       }
 
-      // New subscription — Stripe Checkout with quantity = seats
       const session = await stripe.checkout.sessions.create({
-        customer: customerId,
+        customer: teamCustomerId,
         line_items: [{ price: priceId, quantity: seatCount }],
         mode: "subscription",
         allow_promotion_codes: true,
-        // Store team_id so the webhook can find the right team
-        subscription_data: {
-          metadata: { team_id: profile.team_id },
-        },
+        subscription_data: { metadata: { team_id: profile.team_id } },
         success_url: `${req.headers.get("origin")}/team?checkout=success`,
         cancel_url: `${req.headers.get("origin")}/pricing`,
       });
@@ -137,7 +127,7 @@ serve(async (req) => {
       });
     }
 
-    // ── LEGACY INDIVIDUAL PRICE CHECKOUT (kept for backward compat) ───────────
+    // -- LEGACY INDIVIDUAL PRICE CHECKOUT
     if (!priceId || typeof priceId !== "string" || !priceId.startsWith("price_")) {
       return new Response(JSON.stringify({ error: "Invalid price" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -145,11 +135,11 @@ serve(async (req) => {
     }
 
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    let customerId = customers.data.length > 0 ? customers.data[0].id : undefined;
+    const individualCustomerId = customers.data.length > 0 ? customers.data[0].id : undefined;
 
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      customer_email: customerId ? undefined : user.email,
+    const indivSession = await stripe.checkout.sessions.create({
+      customer: individualCustomerId,
+      customer_email: individualCustomerId ? undefined : user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
       allow_promotion_codes: true,
@@ -157,7 +147,7 @@ serve(async (req) => {
       cancel_url: `${req.headers.get("origin")}/pricing`,
     });
 
-    return new Response(JSON.stringify({ url: session.url }), {
+    return new Response(JSON.stringify({ url: indivSession.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
