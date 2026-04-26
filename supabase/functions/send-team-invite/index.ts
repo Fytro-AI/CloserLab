@@ -28,13 +28,47 @@ Deno.serve(async (req) => {
     .single();
 
   if (inviteError || !invite) {
+    console.error("Invite fetch error:", inviteError);
     return new Response(JSON.stringify({ error: "Invite not found" }), { status: 404 });
   }
 
+  console.log("Invite found:", JSON.stringify(invite));
+  console.log("RESEND_API_KEY set:", !!RESEND_API_KEY);
+
   const teamName = invite.teams?.name ?? "your team";
   const inviterName = invite.profiles?.name ?? "Someone";
-  const origin = req.headers.get("origin") ?? "https://closerlab.net";
-  const inviteUrl = `${origin}/join/${invite.token}`;
+  const inviteUrl = `https://closerlab.net/join/${invite.token}`;
+
+  const payload = {
+    from: "CloserLab <noreply@closerlab.net>",
+    to: [invite.email],
+    subject: `${inviterName} invited you to join ${teamName} on CloserLab`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#0a0a0a;color:#f5f5f5;border-radius:12px;">
+        <div style="margin-bottom:32px;">
+          <span style="font-weight:900;font-size:18px;">CLOSER<span style="color:#a3e635;">LAB</span></span>
+        </div>
+        <h1 style="font-size:24px;font-weight:900;margin:0 0 8px;color:#f5f5f5;">You're invited to train with ${teamName}</h1>
+        <p style="color:#737373;margin:0 0 32px;font-size:14px;line-height:1.6;">
+          <strong style="color:#f5f5f5;">${inviterName}</strong> has invited you to join their sales team on CloserLab.
+        </p>
+        <a href="${inviteUrl}" style="display:block;background:#a3e635;color:#0a0a0a;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:0.08em;text-decoration:none;text-align:center;padding:14px 24px;border-radius:8px;margin-bottom:24px;">
+          Accept Invitation
+        </a>
+        <p style="color:#525252;font-size:12px;margin:0;">
+          Or paste this link:<br/>
+          <a href="${inviteUrl}" style="color:#a3e635;word-break:break-all;">${inviteUrl}</a>
+        </p>
+        <hr style="border:none;border-top:1px solid #262626;margin:24px 0;"/>
+        <p style="color:#525252;font-size:11px;margin:0;">
+          Expires ${new Date(invite.expires_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.
+          If you didn't expect this, ignore this email.
+        </p>
+      </div>
+    `,
+  };
+
+  console.log("Sending to Resend, payload to:", payload.to, "from:", payload.from);
 
   const emailRes = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -42,40 +76,14 @@ Deno.serve(async (req) => {
       "Authorization": `Bearer ${RESEND_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      from: "CloserLab <noreply@closerlab.net>",
-      to: [invite.email],
-      subject: `${inviterName} invited you to join ${teamName} on CloserLab`,
-      html: `
-        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#0a0a0a;color:#f5f5f5;border-radius:12px;">
-          <div style="margin-bottom:32px;">
-            <span style="font-weight:900;font-size:18px;letter-spacing:-0.5px;">CLOSER<span style="color:#a3e635;">LAB</span></span>
-          </div>
-          <h1 style="font-size:24px;font-weight:900;margin:0 0 8px;color:#f5f5f5;">You're invited to train with ${teamName}</h1>
-          <p style="color:#737373;margin:0 0 32px;font-size:14px;line-height:1.6;">
-            <strong style="color:#f5f5f5;">${inviterName}</strong> has invited you to join their sales team on CloserLab.
-          </p>
-          <a href="${inviteUrl}" style="display:block;background:#a3e635;color:#0a0a0a;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:0.08em;text-decoration:none;text-align:center;padding:14px 24px;border-radius:8px;margin-bottom:24px;">
-            Accept Invitation
-          </a>
-          <p style="color:#525252;font-size:12px;margin:0;">
-            Or paste this link:<br/>
-            <a href="${inviteUrl}" style="color:#a3e635;word-break:break-all;">${inviteUrl}</a>
-          </p>
-          <hr style="border:none;border-top:1px solid #262626;margin:24px 0;"/>
-          <p style="color:#525252;font-size:11px;margin:0;">
-            Expires ${new Date(invite.expires_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.
-            If you didn't expect this, ignore this email.
-          </p>
-        </div>
-      `,
-    }),
+    body: JSON.stringify(payload),
   });
 
+  const resendBody = await emailRes.json();
+  console.log("Resend status:", emailRes.status, "body:", JSON.stringify(resendBody));
+
   if (!emailRes.ok) {
-    const err = await emailRes.json();
-    console.error("Resend error:", err);
-    return new Response(JSON.stringify({ error: "Failed to send email" }), { status: 500 });
+    return new Response(JSON.stringify({ error: "Failed to send email", detail: resendBody }), { status: 500 });
   }
 
   return new Response(JSON.stringify({ ok: true }), { status: 200 });
