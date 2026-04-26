@@ -12,13 +12,8 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-
-  if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405, headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: corsHeaders });
 
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
@@ -33,19 +28,27 @@ Deno.serve(async (req) => {
   const { invite_id } = await req.json();
   if (!invite_id) return new Response(JSON.stringify({ error: "invite_id required" }), { status: 400, headers: corsHeaders });
 
+  // Fetch invite + team (no FK join on profiles to avoid schema cache issues)
   const { data: invite, error: inviteError } = await supabase
     .from("team_invites")
-    .select("*, teams(name), profiles!team_invites_invited_by_fkey(name)")
+    .select("*, teams(name)")
     .eq("id", invite_id)
     .single();
 
   if (inviteError || !invite) {
-    console.error("Invite fetch error:", inviteError);
+    console.error("Invite fetch error:", JSON.stringify(inviteError));
     return new Response(JSON.stringify({ error: "Invite not found" }), { status: 404, headers: corsHeaders });
   }
 
+  // Fetch inviter name separately
+  const { data: inviterProfile } = await supabase
+    .from("profiles")
+    .select("name")
+    .eq("user_id", invite.invited_by)
+    .single();
+
   const teamName = invite.teams?.name ?? "your team";
-  const inviterName = invite.profiles?.name ?? "Someone";
+  const inviterName = inviterProfile?.name ?? "Someone";
   const inviteUrl = `https://closerlab.net/join/${invite.token}`;
 
   const emailRes = await fetch("https://api.resend.com/emails", {
