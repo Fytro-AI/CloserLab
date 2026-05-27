@@ -339,7 +339,7 @@ export default function RealtimeCall({
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      const sdpResp = await fetch("https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview", {
+      const sdpResp = await fetch("https://api.openai.com/v1/realtime?model=gpt-realtime-2", {
         method: "POST",
         headers: { "Authorization": `Bearer ${ephemeralKey}`, "Content-Type": "application/sdp" },
         body: offer.sdp,
