@@ -303,7 +303,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini-realtime-preview",
+        model: "gpt-realtime-mini",
         voice: "ash",
         instructions: fullInstructions,
         input_audio_transcription: { model: "whisper-1" },
