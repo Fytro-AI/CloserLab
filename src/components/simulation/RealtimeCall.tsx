@@ -279,25 +279,6 @@ export default function RealtimeCall({
 
       startDialTone();
 
-      const tokenResp = await supabase.functions.invoke("realtime-token", {
-        body: {
-          difficulty,
-          sessionType: sessionType || simulationMode || "discovery",
-          customPersona: customPersona || null,
-          // Legacy fallbacks (challenges, etc.) — kept for backward compat
-          prospectName,
-          prospectCompany,
-          prospectBackstory,
-          challengeSystemPrompt,
-          customIndustryDescription,
-        },
-      });
-
-      if (tokenResp.error || !tokenResp.data?.client_secret) {
-        throw new Error(tokenResp.data?.error || "Failed to get voice session token");
-      }
-
-      const ephemeralKey = tokenResp.data.client_secret.value;
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       localStreamRef.current = stream;
       startRecording(stream);
@@ -336,19 +317,33 @@ export default function RealtimeCall({
         setTimeout(() => scheduleSilencePrompt(), 3000);
       };
 
+      // Create SDP offer first
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      const sdpResp = await fetch("https://api.openai.com/v1/realtime?model=gpt-realtime-2", {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${ephemeralKey}`, "Content-Type": "application/sdp" },
-        body: offer.sdp,
+      // Send offer to our backend which proxies to OpenAI's new /v1/realtime/calls endpoint
+      const tokenResp = await supabase.functions.invoke("realtime-token", {
+        body: {
+          sdpOffer: offer.sdp,
+          simulationMode,
+          difficulty,
+          interviewRole,
+          interviewCompany,
+          persona,
+          industry,
+          prospectName,
+          prospectCompany,
+          prospectBackstory,
+          challengeSystemPrompt,
+          customIndustryDescription,
+        },
       });
 
-      if (!sdpResp.ok) throw new Error("WebRTC negotiation failed");
+      if (tokenResp.error || !tokenResp.data?.sdp_answer) {
+        throw new Error(tokenResp.data?.error || "Failed to get voice session");
+      }
 
-      const answerSdp = await sdpResp.text();
-      await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
+      await pc.setRemoteDescription({ type: "answer", sdp: tokenResp.data.sdp_answer });
 
       pc.onconnectionstatechange = () => {
         if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
